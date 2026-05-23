@@ -181,8 +181,25 @@ export async function GET(
             amountPaid: true,
             status: true,
             paymentDate: true,
-            remainAmount : true,
-            feeStructure: { select: { name: true } },
+            remainAmount: true,
+            feeStructure: {
+              select: {
+                name: true,
+                total: true,
+                transportFee: true,
+                monthlyFee: true,
+                totalMonths: true,
+                class: {
+                  select: {
+                    id: true,
+                    name: true,
+                    academicSession: {
+                      select: { id: true, name: true, isActive: true },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
         results: {

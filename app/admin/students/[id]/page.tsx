@@ -33,7 +33,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/app/components/ui/dialog";
-import { KeyRound, Loader2, Receipt, ToggleLeft, ToggleRight, Upload, FileText, Trash2 } from "lucide-react";
+import {
+  KeyRound, Loader2, Receipt, ToggleLeft, ToggleRight, Upload, FileText, Trash2, ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Clock
+} from "lucide-react";
 import { toast } from "sonner";
 import DeleteStudent from "@/app/components/DeleteStudent";
 import DocumentsViewer from "@/app/components/DocumentsViewer";
@@ -72,7 +74,22 @@ interface StudentData {
     amountPaid: number;
     status: "PAID" | "PENDING" | "PARTIAL";
     paymentDate?: string | null;
-    feeStructure?: { name: string } | null;
+    feeStructure?: {
+      name: string;
+      total: string;
+      transportFee: string | null;
+      monthlyFee: string | null;
+      totalMonths: number;
+      class: {
+        id: string;
+        name: string;
+        academicSession: {
+          id: string;
+          name: string;
+          isActive: boolean;
+        } | null;
+      };
+    } | null;
   }>;
   results: Array<{
     id: string;
@@ -458,7 +475,7 @@ export default function StudentProfilePage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Fees Information</CardTitle>
+                <CardTitle>Fee History by Academic Year</CardTitle>
                 <Link
                   href={`/admin/fees/slip/${student.id}`}
                   className="inline-flex items-center px-3 py-1.5 rounded-md bg-black text-white text-xs font-semibold hover:bg-gray-800 transition"
@@ -473,45 +490,7 @@ export default function StudentProfilePage() {
               {student.fees.length === 0 ? (
                 <p className="text-gray-500">No fee records found.</p>
               ) : (
-                <div className="grid gap-4">
-                  {student.fees.map((fee) => (
-                    <Card key={fee.id} className="border border-gray-200 p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium text-gray-700">
-                          {fee.feeStructure?.name || "General Fee"}
-                        </span>
-                        <Badge
-                          variant={
-                            fee.status === "PAID"
-                              ? "default"
-                              : fee.status === "PENDING"
-                              ? "destructive"
-                              : "outline"
-                          }
-                        >
-                          {fee.status}
-                        </Badge>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-gray-600 text-sm">
-                        <p>
-                          <strong>Amount Paid:</strong> ₹
-                          {fee.amountPaid}
-                        </p>
-                        <p>
-                          <strong>Remaining Amount:</strong> ₹
-                          {fee.remainAmount}
-                        </p>
-                        <p>
-                          <strong>Payment Date:</strong>{" "}
-                          {fee.paymentDate
-                            ? new Date(fee.paymentDate).toDateString()
-                            : "N/A"}
-                        </p>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                <FeeHistoryBySession fees={student.fees} usesTransport={student.usesTransport} />
               )}
             </CardContent>
           </Card>
@@ -652,6 +631,244 @@ export default function StudentProfilePage() {
           ← Back to Students
         </Link>
       </div>
+    </div>
+  );
+}
+
+// ---------- Fee History by Session Component ----------
+
+interface FeeForSession {
+  id: string;
+  amountPaid: number;
+  remainAmount: string | number;
+  status: "PAID" | "PENDING" | "PARTIAL";
+  paymentDate?: string | null;
+  feeStructure?: {
+    name: string;
+    total: string;
+    transportFee: string | null;
+    monthlyFee: string | null;
+    totalMonths: number;
+    class: {
+      id: string;
+      name: string;
+      academicSession: {
+        id: string;
+        name: string;
+        isActive: boolean;
+      } | null;
+    };
+  } | null;
+}
+
+function FeeHistoryBySession({
+  fees,
+  usesTransport,
+}: {
+  fees: FeeForSession[];
+  usesTransport: boolean;
+}) {
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
+
+  // Group fees by academic session
+  const sessionMap = new Map<string, {
+    sessionId: string;
+    sessionName: string;
+    isActive: boolean;
+    classes: Array<{
+      classId: string;
+      className: string;
+      structures: Array<{
+        structureId: string;
+        name: string;
+        total: number;
+        paidAmount: number;
+        remainingAmount: number;
+        status: string;
+        paymentDate: string | null;
+      }>;
+    }>;
+  }>();
+
+  for (const fee of fees) {
+    const fs = fee.feeStructure;
+    if (!fs?.class?.academicSession) continue;
+
+    const session = fs.class.academicSession;
+    const key = session.id;
+
+    if (!sessionMap.has(key)) {
+      sessionMap.set(key, {
+        sessionId: session.id,
+        sessionName: session.name,
+        isActive: session.isActive,
+        classes: [],
+      });
+    }
+
+    let classEntry = sessionMap.get(key)!.classes.find(
+      (c) => c.classId === fs.class.id
+    );
+    if (!classEntry) {
+      classEntry = {
+        classId: fs.class.id,
+        className: fs.class.name,
+        structures: [],
+      };
+      sessionMap.get(key)!.classes.push(classEntry);
+    }
+
+    const totalAmount = Number(fs.total);
+    let adjustedTotal = totalAmount;
+    if (fs.transportFee && !usesTransport) {
+      adjustedTotal -= Number(fs.transportFee);
+    }
+    const paidAmount = Number(fee.amountPaid);
+    const remainingAmount = Math.max(adjustedTotal - paidAmount, 0);
+
+    classEntry.structures.push({
+      structureId: fee.id,
+      name: fs.name || "Fee Structure",
+      total: adjustedTotal,
+      paidAmount,
+      remainingAmount,
+      status: fee.status,
+      paymentDate: fee.paymentDate ?? null,
+    });
+  }
+
+  const sessions = Array.from(sessionMap.values()).sort((a, b) => {
+    if (a.isActive) return -1;
+    if (b.isActive) return 1;
+    return a.sessionName.localeCompare(b.sessionName);
+  });
+
+  const toggleSession = (id: string) => {
+    setExpandedSessions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const statusBadge = (status: string) => {
+    switch (status) {
+      case "PAID":
+        return <Badge className="bg-green-100 text-green-700 hover:bg-green-100"><CheckCircle2 className="h-3 w-3 mr-1" />Paid</Badge>;
+      case "PARTIAL":
+        return <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100"><Clock className="h-3 w-3 mr-1" />Partial</Badge>;
+      case "PENDING":
+        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100"><AlertCircle className="h-3 w-3 mr-1" />Pending</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {sessions.length === 0 ? (
+        <p className="text-gray-500">No fee records found.</p>
+      ) : (
+        sessions.map((session) => {
+          const sessionTotal = session.classes.reduce(
+            (sum, c) => sum + c.structures.reduce((s, fs) => s + fs.total, 0),
+            0
+          );
+          const sessionPaid = session.classes.reduce(
+            (sum, c) => sum + c.structures.reduce((s, fs) => s + fs.paidAmount, 0),
+            0
+          );
+          const sessionRemaining = session.classes.reduce(
+            (sum, c) => sum + c.structures.reduce((s, fs) => s + fs.remainingAmount, 0),
+            0
+          );
+          const isExpanded = expandedSessions.has(session.sessionId);
+
+          return (
+            <div key={session.sessionId} className="border rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleSession(session.sessionId)}
+                className="w-full flex items-center justify-between p-3 hover:bg-gray-50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3">
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-400" />
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 text-sm">{session.sessionName}</span>
+                      {session.isActive && (
+                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs">Current</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">{session.classes.map((c) => c.className).join(", ")}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  <div className="text-right">
+                    <p className="text-gray-500">Total</p>
+                    <p className="font-semibold">₹{sessionTotal.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-500">Paid</p>
+                    <p className="font-semibold text-green-600">₹{sessionPaid.toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-gray-500">Remaining</p>
+                    <p className={`font-semibold ${sessionRemaining > 0 ? "text-red-600" : "text-green-600"}`}>
+                      ₹{sessionRemaining.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {isExpanded && (
+                <div className="border-t bg-gray-50 p-3 space-y-2">
+                  {session.classes.map((cls) => (
+                    <div key={cls.classId}>
+                      <h4 className="text-xs font-semibold text-gray-700 mb-1.5">{cls.className}</h4>
+                      <div className="space-y-1.5">
+                        {cls.structures.map((structure) => {
+                          const progressPct = structure.total > 0
+                            ? Math.round((structure.paidAmount / structure.total) * 100)
+                            : 0;
+
+                          return (
+                            <div key={structure.structureId} className="bg-white p-2.5 rounded border flex items-center justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900 text-sm truncate">{structure.name}</p>
+                                  <span className="text-xs text-gray-400 shrink-0">{statusBadge(structure.status)}</span>
+                                </div>
+                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                  <span>Fee: <strong>₹{structure.total.toLocaleString()}</strong></span>
+                                  <span>Paid: <strong className="text-green-600">₹{structure.paidAmount.toLocaleString()}</strong></span>
+                                  <span>Remaining: <strong className={structure.remainingAmount > 0 ? "text-red-600" : "text-green-600"}>₹{structure.remainingAmount.toLocaleString()}</strong></span>
+                                  {structure.paymentDate && (
+                                    <span>Date: {new Date(structure.paymentDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                                {structure.remainingAmount > 0 && (
+                                  <div className="mt-1.5 w-full bg-gray-200 rounded-full h-1.5 max-w-[200px]">
+                                    <div className="bg-green-600 h-1.5 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
