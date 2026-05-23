@@ -1,0 +1,11 @@
+ALTER TABLE "SchoolSettings" ADD COLUMN "principalName" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "registrationNo" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "receiptPrefix" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "admissionPrefix" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "staffIdPrefix" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "gradingSystem" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "dateFormat" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "currency" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "website" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "pdfHeader" TEXT;
+ALTER TABLE "SchoolSettings" ADD COLUMN "pdfFooter" TEXT;

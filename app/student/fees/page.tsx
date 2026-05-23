@@ -9,9 +9,33 @@ import {
   CardTitle,
 } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
-import { Wallet, Receipt, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Wallet, Receipt, AlertCircle, CheckCircle2, Clock, ChevronDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import Pagination from "@/app/components/Pagination";
+
+interface SessionClass {
+  classId: string;
+  className: string;
+  structures: Array<{
+    id: string;
+    name: string | null;
+    total: string;
+    monthlyFee: string | null;
+    totalMonths: number;
+    transportFee: string | null;
+    usesTransport: boolean;
+    paidAmount: number;
+    remainingAmount: number;
+    status: "PENDING" | "PARTIAL" | "PAID";
+  }>;
+}
+
+interface FeeSession {
+  sessionId: string;
+  sessionName: string;
+  isActive: boolean;
+  classes: SessionClass[];
+}
 
 interface FeePayment {
   id: string;
@@ -31,16 +55,8 @@ interface FeePayment {
 }
 
 interface FeesData {
+  sessions: FeeSession[];
   feePayments: FeePayment[];
-  feeStructures: Array<{
-    id: string;
-    name: string | null;
-    total: string;
-    monthlyFee: string | null;
-    totalMonths: number;
-    class: { name: string };
-    payments?: Array<{ amountPaid: string; status: "PENDING" | "PARTIAL" | "PAID" }>;
-  }>;
   summary: {
     totalPaid: number;
     totalPending: number;
@@ -54,6 +70,7 @@ export default function StudentFeesPage() {
   const [data, setData] = useState<FeesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     async function fetchFees() {
@@ -62,6 +79,11 @@ export default function StudentFeesPage() {
         if (res.ok) {
           const feesData = await res.json();
           setData(feesData);
+          // Auto-expand active session
+          const activeSession = feesData.sessions?.find((s: FeeSession) => s.isActive);
+          if (activeSession) {
+            setExpandedSessions(new Set([activeSession.sessionId]));
+          }
         }
       } catch (error) {
         console.error("Error fetching fees:", error);
@@ -77,21 +99,14 @@ export default function StudentFeesPage() {
   const totalPages = Math.ceil(feePayments.length / PAGE_SIZE);
   const paginatedPayments = feePayments.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-gray-500">Failed to load fees data</p>
-      </div>
-    );
-  }
+  const toggleSession = (id: string) => {
+    setExpandedSessions((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -121,13 +136,29 @@ export default function StudentFeesPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-500">Failed to load fees data</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Fees Management</h1>
-          <p className="text-gray-500 mt-1">View and manage your fee payments</p>
+          <p className="text-gray-500 mt-1">Fee history across all academic years</p>
         </div>
         <Link
           href="/student/fees/slip"
@@ -139,7 +170,7 @@ export default function StudentFeesPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
@@ -177,6 +208,21 @@ export default function StudentFeesPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">
+              Academic Years
+            </CardTitle>
+            <Receipt className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {data.sessions.length}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Session{data.sessions.length !== 1 ? "s" : ""} with fee records</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">
               Total Payments
             </CardTitle>
             <Wallet className="h-4 w-4 text-blue-600" />
@@ -190,104 +236,149 @@ export default function StudentFeesPage() {
         </Card>
       </div>
 
-      {/* Fee Structures */}
-      {data.feeStructures.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt className="h-5 w-5" />
-              Fee Structures
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Fee History by Academic Session */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5" />
+            Fee History by Academic Year
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.sessions.length === 0 ? (
+            <div className="text-center py-12">
+              <Wallet className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-500">No fee records found</p>
+            </div>
+          ) : (
             <div className="space-y-4">
-              {data.feeStructures.map((structure) => {
-                const payment = structure.payments?.[0];
-                const totalAmount = Number(structure.total);
-                const paidAmount = payment ? Number(payment.amountPaid) : 0;
-                const remainingAmount = totalAmount - paidAmount;
-                const monthlyFee = structure.monthlyFee ? Number(structure.monthlyFee) : 0;
-                const totalMonths = structure.totalMonths || 12;
+              {data.sessions.map((session) => {
+                const sessionTotal = session.classes.reduce(
+                  (sum, c) => sum + c.structures.reduce((s, fs) => s + Number(fs.total), 0),
+                  0
+                );
+                const sessionPaid = session.classes.reduce(
+                  (sum, c) => sum + c.structures.reduce((s, fs) => s + fs.paidAmount, 0),
+                  0
+                );
+                const sessionRemaining = session.classes.reduce(
+                  (sum, c) => sum + c.structures.reduce((s, fs) => s + fs.remainingAmount, 0),
+                  0
+                );
+                const isExpanded = expandedSessions.has(session.sessionId);
 
                 return (
-                  <div
-                    key={structure.id}
-                    className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900">
-                          {structure.name || "Fee Structure"}
-                        </h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {structure.class.name}
-                        </p>
-                        {monthlyFee > 0 && (
-                          <p className="text-xs text-blue-600 font-medium mt-1">
-                            ₹{monthlyFee}/month × {totalMonths} months
-                          </p>
-                        )}
-                        <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
-                          <div>
-                            <p className="text-gray-500">Total Amount</p>
-                            <p className="font-semibold text-gray-900">
-                              ₹{totalAmount.toLocaleString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Paid</p>
-                            <p className="font-semibold text-green-600">
-                              ₹{paidAmount.toLocaleString()}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Remaining</p>
-                            <p className="font-semibold text-red-600">
-                              ₹{remainingAmount.toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                        {remainingAmount > 0 && (
-                          <div className="mt-3">
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div
-                                className="bg-green-600 h-2 rounded-full transition-all"
-                                style={{
-                                  width: `${(paidAmount / totalAmount) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {Math.round((paidAmount / totalAmount) * 100)}% paid
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4">
-                        {payment ? (
-                          getStatusBadge(payment.status)
+                  <div key={session.sessionId} className="border rounded-lg overflow-hidden">
+                    {/* Session Header */}
+                    <button
+                      onClick={() => toggleSession(session.sessionId)}
+                      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        {isExpanded ? (
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
                         ) : (
-                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Not Paid
-                          </Badge>
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
                         )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900">{session.sessionName}</span>
+                            {session.isActive && (
+                              <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-xs">
+                                Current
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {session.classes.map((c) => c.className).join(", ")}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                      <div className="flex items-center gap-6 text-sm">
+                        <div className="text-right">
+                          <p className="text-gray-500">Total</p>
+                          <p className="font-semibold">₹{sessionTotal.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-gray-500">Paid</p>
+                          <p className="font-semibold text-green-600">₹{sessionPaid.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-gray-500">Remaining</p>
+                          <p className={`font-semibold ${sessionRemaining > 0 ? "text-red-600" : "text-green-600"}`}>
+                            ₹{sessionRemaining.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <div className="border-t bg-gray-50 p-4 space-y-4">
+                        {session.classes.map((cls) => (
+                          <div key={cls.classId}>
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2">{cls.className}</h4>
+                            <div className="space-y-2">
+                              {cls.structures.map((structure) => {
+                                const totalAmount = Number(structure.total);
+                                let adjustedTotal = totalAmount;
+                                if (structure.transportFee && !structure.usesTransport) {
+                                  adjustedTotal -= Number(structure.transportFee);
+                                }
+                                const progressPct = adjustedTotal > 0
+                                  ? Math.round((structure.paidAmount / adjustedTotal) * 100)
+                                  : 0;
+
+                                return (
+                                  <div
+                                    key={structure.id}
+                                    className="bg-white p-3 rounded border flex items-center justify-between"
+                                  >
+                                    <div className="flex-1">
+                                      <p className="font-medium text-gray-900 text-sm">
+                                        {structure.name || "Fee Structure"}
+                                      </p>
+                                      <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                                        <span>Total: <strong>₹{adjustedTotal.toLocaleString()}</strong></span>
+                                        <span>Paid: <strong className="text-green-600">₹{structure.paidAmount.toLocaleString()}</strong></span>
+                                        <span>Remaining: <strong className={structure.remainingAmount > 0 ? "text-red-600" : "text-green-600"}>
+                                          ₹{structure.remainingAmount.toLocaleString()}
+                                        </strong></span>
+                                      </div>
+                                      {structure.remainingAmount > 0 && (
+                                        <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5 max-w-xs">
+                                          <div
+                                            className="bg-green-600 h-1.5 rounded-full transition-all"
+                                            style={{ width: `${progressPct}%` }}
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="ml-3">
+                                      {getStatusBadge(structure.status)}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* Payment History */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
-            Payment History
+            All Payment History
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -298,6 +389,9 @@ export default function StudentFeesPage() {
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
                       Fee Structure
+                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
+                      Class
                     </th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">
                       Amount Paid
@@ -320,14 +414,14 @@ export default function StudentFeesPage() {
                       className="border-b hover:bg-gray-50 transition-colors"
                     >
                       <td className="py-4 px-4">
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {payment.feeStructure.name || "Fee Payment"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {payment.feeStructure.class.name}
-                          </p>
-                        </div>
+                        <p className="font-medium text-gray-900">
+                          {payment.feeStructure.name || "Fee Payment"}
+                        </p>
+                      </td>
+                      <td className="py-4 px-4">
+                        <p className="text-sm text-gray-500">
+                          {payment.feeStructure.class.name}
+                        </p>
                       </td>
                       <td className="py-4 px-4">
                         <span className="font-semibold text-green-600">

@@ -175,7 +175,7 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input {...field} required />
+                      <Input {...field} value={typeof field.value === "string" ? field.value : ""} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -190,7 +190,7 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input type="email" {...field} required />
+                      <Input type="email" {...field} value={typeof field.value === "string" ? field.value : ""} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -205,7 +205,7 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                   <FormItem>
                     <FormLabel>Aadhar No</FormLabel>
                     <FormControl>
-                      <Input {...field} required />
+                      <Input {...field} value={typeof field.value === "string" ? field.value : ""} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -220,7 +220,7 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                   <FormItem>
                     <FormLabel>Admission No</FormLabel>
                     <FormControl>
-                      <Input {...field} required />
+                      <Input {...field} value={typeof field.value === "string" ? field.value : ""} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -235,7 +235,7 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                   <FormItem>
                     <FormLabel>Roll Number</FormLabel>
                     <FormControl>
-                      <Input {...field} required />
+                      <Input {...field} value={typeof field.value === "string" ? field.value : ""} required />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -250,13 +250,13 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                   <FormItem>
                     <FormLabel>Class ID</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+<Input {...field} value={typeof field.value === "string" ? field.value : ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
+            
               {/* DOB */}
               <FormField
                 control={form.control}
@@ -265,7 +265,7 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                   <FormItem>
                     <FormLabel>DOB</FormLabel>
                     <FormControl>
-                      <Input type="date" {...field} />
+                      <Input type="date" {...field} value={typeof field.value === "string" ? field.value : ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -333,7 +333,7 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                     <FormItem>
                       <FormLabel>{fieldName}</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input {...field} value={typeof field.value === "string" ? field.value : ""} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

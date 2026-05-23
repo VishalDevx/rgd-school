@@ -42,15 +42,28 @@ export async function GET(req: NextRequest) {
       select: { name: true, address: true, contactEmail: true, contactPhone: true, logoUrl: true },
     });
 
-    const feeStructures = await db.feeStructure.findMany({
-      where: { classId: student.classId ?? "" },
-      include: { class: true },
-      orderBy: { createdAt: "desc" },
-    });
-
+    // Get all fee payments (across all sessions)
     const feePayments = await db.feePayment.findMany({
       where: { studentId },
       include: { feeStructure: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Get all unique classIds from historical payments + current class
+    const historicalClassIds = [
+      ...new Set(
+        feePayments
+          .map((p) => p.feeStructure.classId)
+          .filter((id): id is string => id !== null)
+      ),
+    ];
+    const allClassIds = [
+      ...new Set([...(student.classId ? [student.classId] : []), ...historicalClassIds]),
+    ];
+
+    const feeStructures = await db.feeStructure.findMany({
+      where: { classId: { in: allClassIds } },
+      include: { class: { include: { academicSession: true } } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -75,6 +88,12 @@ export async function GET(req: NextRequest) {
       return {
         structureId: fs.id,
         structureName: fs.name ?? "Fee Structure",
+        academicSession: {
+          id: fs.class.academicSession?.id ?? "",
+          name: fs.class.academicSession?.name ?? "",
+          isActive: fs.class.academicSession?.isActive ?? false,
+        },
+        className: fs.class.name,
         tuitionFee: Number(fs.tuitionFee),
         examFee: Number(fs.examFee ?? 0),
         transportFee: student.usesTransport ? Number(fs.transportFee ?? 0) : 0,
