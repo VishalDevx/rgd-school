@@ -30,6 +30,8 @@ import {
   Bell,
   CheckCheck,
   Timer,
+  Award,
+  CreditCard,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/app/components/ui/button";
@@ -72,6 +74,12 @@ const icons: Record<string, React.ComponentType<{ size?: number }>> = {
   trending: TrendingUp,
   cron: Timer,
   files: FileText,
+  bell: Bell,
+  homework: ClipboardList,
+  book: BookOpen,
+  award: Award,
+  "credit-card": CreditCard,
+  "file-text": FileText,
 };
 
 export function Sidebar({ role, collapsed = false, onToggleCollapsed }: SidebarProps) {

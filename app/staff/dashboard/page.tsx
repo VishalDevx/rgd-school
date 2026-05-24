@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/app/components/ui/button";
@@ -318,16 +319,40 @@ export default function StaffDashboardPage() {
                 Mark Attendance
               </Button>
             </Link>
-            <Link href="/staff/exams">
+            <Link href="/staff/staff-attendance">
+              <Button variant="outline" className="w-full justify-start">
+                <CalendarCheck className="h-4 w-4 mr-2" />
+                My Attendance
+              </Button>
+            </Link>
+            <Link href="/staff/homework/new">
               <Button variant="outline" className="w-full justify-start">
                 <ClipboardList className="h-4 w-4 mr-2" />
-                Manage Exams
+                New Homework
+              </Button>
+            </Link>
+            <Link href="/staff/study-materials">
+              <Button variant="outline" className="w-full justify-start">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Study Materials
+              </Button>
+            </Link>
+            <Link href="/staff/timetable">
+              <Button variant="outline" className="w-full justify-start">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                My Timetable
               </Button>
             </Link>
             <Link href="/staff/results">
               <Button variant="outline" className="w-full justify-start">
                 <FileText className="h-4 w-4 mr-2" />
                 Add Results
+              </Button>
+            </Link>
+            <Link href="/staff/notifications">
+              <Button variant="outline" className="w-full justify-start">
+                <Bell className="h-4 w-4 mr-2" />
+                Notifications
               </Button>
             </Link>
             <Link href="/staff/announcements">

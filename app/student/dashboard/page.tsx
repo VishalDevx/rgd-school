@@ -22,6 +22,7 @@ import {
   AlertCircle,
   FileText,
   GraduationCap,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/app/components/ui/button";
@@ -407,10 +408,40 @@ export default function StudentDashboardPage() {
                 View Results
               </Button>
             </Link>
+            <Link href="/student/homework">
+              <Button variant="outline" className="w-full justify-start">
+                <BookOpen className="h-4 w-4 mr-2" />
+                My Homework
+              </Button>
+            </Link>
+            <Link href="/student/date-sheet">
+              <Button variant="outline" className="w-full justify-start">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                Exam Date Sheet
+              </Button>
+            </Link>
+            <Link href="/student/timetable">
+              <Button variant="outline" className="w-full justify-start">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                Weekly Timetable
+              </Button>
+            </Link>
+            <Link href="/student/study-materials">
+              <Button variant="outline" className="w-full justify-start">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Study Materials
+              </Button>
+            </Link>
             <Link href="/student/attendance">
               <Button variant="outline" className="w-full justify-start">
                 <CalendarCheck className="h-4 w-4 mr-2" />
                 Attendance History
+              </Button>
+            </Link>
+            <Link href="/student/notifications">
+              <Button variant="outline" className="w-full justify-start">
+                <Bell className="h-4 w-4 mr-2" />
+                Notifications
               </Button>
             </Link>
             <Link href="/student/announcements">

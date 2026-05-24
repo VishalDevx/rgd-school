@@ -19,7 +19,11 @@ interface Leave {
   staff: {
     user: { name: string; email: string };
     designation: string;
-  };
+  } | null;
+  student: {
+    user: { name: string; email: string };
+    class?: { name: string };
+  } | null;
 }
 
 export default function AdminLeavesPage() {
@@ -78,9 +82,21 @@ export default function AdminLeavesPage() {
   const pending = leaves.filter((l) => l.status === "PENDING");
   const history = leaves.filter((l) => l.status !== "PENDING");
 
+  const getApplicantName = (l: Leave) => {
+    if (l.staff) return l.staff.user.name;
+    if (l.student) return l.student.user.name;
+    return "Unknown";
+  };
+
+  const getApplicantType = (l: Leave) => {
+    if (l.staff) return "Staff";
+    if (l.student) return "Student";
+    return "Unknown";
+  };
+
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Staff Leave Management</h1>
+      <h1 className="text-2xl font-bold">Leave Management</h1>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
@@ -104,14 +120,14 @@ export default function AdminLeavesPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Staff</TableHead><TableHead>Designation</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Reason</TableHead><TableHead>Actions</TableHead>
+                  <TableHead>Applicant</TableHead><TableHead>Type</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Reason</TableHead><TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {pending.map((l) => (
                   <TableRow key={l.id}>
-                    <TableCell className="font-medium">{l.staff.user.name}</TableCell>
-                    <TableCell>{l.staff.designation}</TableCell>
+                    <TableCell className="font-medium">{getApplicantName(l)}</TableCell>
+                    <TableCell><Badge variant="outline">{getApplicantType(l)}</Badge></TableCell>
                     <TableCell>{new Date(l.fromDate).toLocaleDateString()}</TableCell>
                     <TableCell>{new Date(l.toDate).toLocaleDateString()}</TableCell>
                     <TableCell className="max-w-xs truncate">{l.reason}</TableCell>
@@ -139,16 +155,17 @@ export default function AdminLeavesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Staff</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Reason</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                <TableHead>Applicant</TableHead><TableHead>Type</TableHead><TableHead>From</TableHead><TableHead>To</TableHead><TableHead>Reason</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {history.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-gray-500">No leave history</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-gray-500">No leave history</TableCell></TableRow>
               ) : (
                 history.map((l) => (
                   <TableRow key={l.id}>
-                    <TableCell className="font-medium">{l.staff.user.name}</TableCell>
+                    <TableCell className="font-medium">{getApplicantName(l)}</TableCell>
+                    <TableCell><Badge variant="outline">{getApplicantType(l)}</Badge></TableCell>
                     <TableCell>{new Date(l.fromDate).toLocaleDateString()}</TableCell>
                     <TableCell>{new Date(l.toDate).toLocaleDateString()}</TableCell>
                     <TableCell className="max-w-xs truncate">{l.reason}</TableCell>

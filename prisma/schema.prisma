@@ -244,6 +244,7 @@ model Student {
   fees          FeePayment[]
   results       Result[]
   transport     TransportAssignment[]
+  leaves        Leave[]
   class         Class?         @relation(fields: [classId], references: [id])
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   notifications Notification[] @relation("NotificationToStudent")
@@ -615,15 +616,18 @@ model Notification {
 
 model Leave {
   id        String   @id @default(cuid())
-  staffId   String
+  staffId   String?
+  studentId String?
   fromDate  DateTime
   toDate    DateTime
   reason    String
   createdAt DateTime @default(now())
   status    String   @default("PENDING")
-  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff     Staff?   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@index([staffId])
+  @@index([studentId])
 }
 
 model AuditLog {

@@ -40,6 +40,9 @@ export async function GET(
       staff: {
         include: { user: { select: { name: true, email: true } } },
       },
+      student: {
+        include: { user: { select: { name: true, email: true } } },
+      },
     },
   });
 

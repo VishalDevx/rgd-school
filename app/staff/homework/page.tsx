@@ -53,7 +53,7 @@ export default function StaffHomeworkPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">My Homework</h1>
-        <Link href="/admin/homework/new">
+        <Link href="/staff/homework/new">
           <Button>
             <Plus className="h-4 w-4 mr-2" />
             New Homework

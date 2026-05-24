@@ -21,11 +21,9 @@ import {
 import {
   ClipboardList,
   Plus,
+  BookOpen,
   Calendar,
   Clock,
-  BookOpen,
-  Lock,
-  Unlock,
 } from "lucide-react";
 import Link from "next/link";
 import { Label } from "@/app/components/ui/label";
@@ -158,14 +156,16 @@ export default function StaffExamsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Exams Management</h1>
           <p className="text-gray-500 mt-1">Create and manage exams for your classes</p>
         </div>
-        {classes.length > 0 && (
-          <Link href="/admin/exams/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Exam
-            </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {classes.length > 0 && (
+            <Link href="/staff/results/new">
+              <Button variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Results
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Filter */}
@@ -278,10 +278,8 @@ export default function StaffExamsPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <CardTitle className="text-lg">{exam.name}</CardTitle>
                         {getCategoryBadge(exam.category)}
-                        {exam.isLocked ? (
-                          <Lock className="h-4 w-4 text-gray-400" />
-                        ) : (
-                          <Unlock className="h-4 w-4 text-green-500" />
+                        {exam.isLocked && (
+                          <span className="text-xs text-gray-400 ml-1">(Locked)</span>
                         )}
                       </div>
                       {exam.sequence && (
@@ -311,10 +309,10 @@ export default function StaffExamsPage() {
                           Add Results
                         </Button>
                       </Link>
-                      <Link href={`/admin/date-sheet?examId=${exam.id}`}>
+                      <Link href={`/staff/results?examId=${exam.id}`}>
                         <Button variant="outline" size="sm">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          Timetable
+                          <BookOpen className="h-3 w-3 mr-1" />
+                          Results
                         </Button>
                       </Link>
                     </div>
