@@ -237,6 +237,10 @@ model Student {
   category      String?
   udiseCode     String?        @unique
   contactNo     String?
+  panNo         String?
+  apaarId       String?
+  fatherAadhar  String?
+  motherAadhar  String?
   previousSchool String?
   remarks       String?
   usesTransport Boolean        @default(false)

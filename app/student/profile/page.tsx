@@ -37,6 +37,10 @@ interface StudentProfile {
   profileImg: string | null;
   fatherName: string | null;
   motherName: string | null;
+  panNo: string | null;
+  apaarId: string | null;
+  fatherAadhar: string | null;
+  motherAadhar: string | null;
   occupation: string;
   religion: string;
   caste: string;
@@ -290,6 +294,42 @@ export default function StudentProfilePage() {
                     Mother&apos;s Name
                   </label>
                   <p className="text-gray-900">{student.motherName}</p>
+                </div>
+              )}
+
+              {student.fatherAadhar && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 mb-1">
+                    Father&apos;s Aadhar
+                  </label>
+                  <p className="text-gray-900">{student.fatherAadhar}</p>
+                </div>
+              )}
+
+              {student.motherAadhar && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 mb-1">
+                    Mother&apos;s Aadhar
+                  </label>
+                  <p className="text-gray-900">{student.motherAadhar}</p>
+                </div>
+              )}
+
+              {student.panNo && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 mb-1">
+                    Pan No
+                  </label>
+                  <p className="text-gray-900">{student.panNo}</p>
+                </div>
+              )}
+
+              {student.apaarId && (
+                <div>
+                  <label className="text-sm font-medium text-gray-500 mb-1">
+                    APAAR ID
+                  </label>
+                  <p className="text-gray-900">{student.apaarId}</p>
                 </div>
               )}
 

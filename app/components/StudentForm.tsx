@@ -46,6 +46,10 @@ const StudentEditSchema = z.object({
   religion: z.string().optional(),
   caste: z.string().optional(),
   udiseCode: z.string().optional(),
+  panNo: z.string().optional(),
+  apaarId: z.string().optional(),
+  fatherAadhar: z.string().optional(),
+  motherAadhar: z.string().optional(),
   contactNo: z.string().optional(),
   usesTransport: z.boolean().optional(),
 });
@@ -71,6 +75,10 @@ interface EditStudentFormProps {
     religion: string | null;
     caste: string | null;
     udiseCode: string | null;
+    panNo: string | null;
+    apaarId: string | null;
+    fatherAadhar: string | null;
+    motherAadhar: string | null;
     contactNo: string | null;
     usesTransport?: boolean;
     user: {
@@ -112,6 +120,10 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
       religion: student.religion ?? "",
       caste: student.caste ?? "",
       udiseCode: student.udiseCode ?? "",
+      panNo: student.panNo ?? "",
+      apaarId: student.apaarId ?? "",
+      fatherAadhar: student.fatherAadhar ?? "",
+      motherAadhar: student.motherAadhar ?? "",
       contactNo: student.contactNo ?? "",
       usesTransport: student.usesTransport ?? false,
     },
@@ -319,6 +331,10 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
               {[
                 "fatherName",
                 "motherName",
+                "panNo",
+                "apaarId",
+                "fatherAadhar",
+                "motherAadhar",
                 "occupation",
                 "religion",
                 "caste",

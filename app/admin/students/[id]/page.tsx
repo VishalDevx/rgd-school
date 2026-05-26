@@ -55,6 +55,10 @@ interface StudentData {
   address?: string | null;
   fatherName?: string | null;
   motherName?: string | null;
+  panNo?: string | null;
+  apaarId?: string | null;
+  fatherAadhar?: string | null;
+  motherAadhar?: string | null;
   occupation?: string | null;
   religion?: string | null;
   caste?: string | null;
@@ -381,6 +385,18 @@ export default function StudentProfilePage() {
               </p>
               <p>
                 <strong>Contact No:</strong> {student.contactNo || "N/A"}
+              </p>
+              <p>
+                <strong>Pan No:</strong> {student.panNo || "N/A"}
+              </p>
+              <p>
+                <strong>APAAR ID:</strong> {student.apaarId || "N/A"}
+              </p>
+              <p>
+                <strong>Father Aadhar:</strong> {student.fatherAadhar || "N/A"}
+              </p>
+              <p>
+                <strong>Mother Aadhar:</strong> {student.motherAadhar || "N/A"}
               </p>
               <p>
                 <strong>Fathers Name:</strong> {student.fatherName || "N/A"}

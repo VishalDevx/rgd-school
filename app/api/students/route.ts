@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
     const religion = form.get("religion") as string | null;
     const caste = form.get("caste") as string | null;
     const udiseCode = form.get("udiseCode") as string | null;
+    const panNo = form.get("panNo") as string | null;
+    const apaarId = form.get("apaarId") as string | null;
+    const fatherAadhar = form.get("fatherAadhar") as string | null;
+    const motherAadhar = form.get("motherAadhar") as string | null;
     const contactNo = form.get("contactNo") as string | null;
     const usesTransport = form.get("usesTransport") === "yes";
 
@@ -112,6 +116,10 @@ export async function POST(req: NextRequest) {
           religion: religion ?? undefined,
           caste: caste ?? undefined,
           udiseCode,
+          panNo,
+          apaarId,
+          fatherAadhar,
+          motherAadhar,
           contactNo,
           usesTransport,
         },

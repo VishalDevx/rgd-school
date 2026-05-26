@@ -48,6 +48,10 @@ interface FormState {
   fatherName: string;
   motherName: string;
   udiseCode: string;
+  panNo: string;
+  apaarId: string;
+  fatherAadhar: string;
+  motherAadhar: string;
   contactNo: string;
   usesTransport: string;
 }
@@ -78,6 +82,10 @@ export default function NewStudentPage() {
     fatherName: "",
     motherName: "",
     udiseCode: "",
+    panNo: "",
+    apaarId: "",
+    fatherAadhar: "",
+    motherAadhar: "",
     contactNo: "",
     usesTransport: "no",
   });
@@ -163,6 +171,10 @@ export default function NewStudentPage() {
                 ["Father Name", "fatherName"],
                 ["Mother Name", "motherName"],
                 ["UDISE Code", "udiseCode"],
+                ["Pan No", "panNo"],
+                ["APAAR ID", "apaarId"],
+                ["Father Aadhar", "fatherAadhar"],
+                ["Mother Aadhar", "motherAadhar"],
                 ["Religion", "religion"],
                 ["Caste", "caste"],
                 ["Contact No", "contactNo"],
