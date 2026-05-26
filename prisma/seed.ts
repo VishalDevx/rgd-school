@@ -162,10 +162,9 @@ async function main() {
     data: {
       classId: class9A.id,
       name: "Annual Fee",
-      tuitionFee: "5400",
       examFee: "0",
       miscFee: "0",
-      total: "5400",
+      total: "0",
       monthlyFee: "450",
       totalMonths: 12,
     },

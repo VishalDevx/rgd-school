@@ -15,7 +15,6 @@ import Pagination from "@/app/components/Pagination";
 interface Structure {
   id: string;
   name: string | null;
-  tuitionFee: number | null;
   examFee: number | null;
   transportFee: number | null;
   miscFee: number | null;
@@ -82,7 +81,6 @@ export default function FeeStructuresPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Class</TableHead>
-                <TableHead>Tuition</TableHead>
                 <TableHead>Exam</TableHead>
                 <TableHead>Transport</TableHead>
                 <TableHead>Misc</TableHead>
@@ -93,13 +91,12 @@ export default function FeeStructuresPage() {
             </TableHeader>
             <TableBody>
               {paginated.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-gray-500">No fee structures found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-gray-500">No fee structures found</TableCell></TableRow>
               ) : (
                 paginated.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell>{s.name || "Untitled"}</TableCell>
                     <TableCell>{s.class?.name || "-"}</TableCell>
-                    <TableCell>₹{Number(s.tuitionFee || 0).toLocaleString()}</TableCell>
                     <TableCell>₹{Number(s.examFee || 0).toLocaleString()}</TableCell>
                     <TableCell>
                       {s.transportFee ? (

@@ -16,7 +16,6 @@ type FeeStructureRaw = {
   id: string;
   name: string | null;
   amount: Decimal;
-  tuitionFee: Decimal | null;
   examFee: Decimal | null;
   transportFee: Decimal | null;
   miscFee: Decimal | null;

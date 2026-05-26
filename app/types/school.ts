@@ -48,7 +48,6 @@ export interface IFeeStructure {
   id: string;
   classId: string;
   name?: string | null;
-  tuitionFee: number;
   examFee?: number | null;
   transportFee?: number | null;
   miscFee?: number | null;

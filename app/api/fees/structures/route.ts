@@ -10,7 +10,6 @@ interface FeeStructureBody {
   classId: string;
   categoryId?: string | null;
   name?: string | null;
-  tuitionFee: number | string;
   examFee?: number | string | null;
   transportFee?: number | string | null;
   miscFee?: number | string | null;
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => null)) as FeeStructureBody | null;
 
-  if (!body || !body.classId || body.tuitionFee == null) {
+  if (!body || !body.classId) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
@@ -53,34 +52,30 @@ export async function POST(req: NextRequest) {
   const totalMonths = body.totalMonths != null ? toNum(body.totalMonths) : 12;
 
   let total: number;
-  let tuition: number;
   let exam: number;
   let transport: number;
   let misc: number;
 
   if (monthlyFee > 0) {
     // Monthly fee mode: calculate total from monthlyFee * months
-    tuition = toNum(body.tuitionFee);
     exam = toNum(body.examFee);
     transport = toNum(body.transportFee);
     misc = toNum(body.miscFee);
     total = monthlyFee * totalMonths;
   } else {
     // Legacy mode: sum of all components
-    tuition = toNum(body.tuitionFee);
     exam = toNum(body.examFee);
     transport = toNum(body.transportFee);
     misc = toNum(body.miscFee);
-    total = tuition + exam + transport + misc;
+    total = exam + transport + misc;
   }
 
   // ----- Create Fee Structure -----
   const created = await db.feeStructure.create({
     data: {
       classId: body.classId,
-      categoryId: body.categoryId ?? null,
+      categoryId: body.categoryId || null,
       name: body.name ?? null,
-      tuitionFee: new Prisma.Decimal(tuition.toFixed(2)),
       examFee: body.examFee != null ? new Prisma.Decimal(exam.toFixed(2)) : null,
       transportFee:
         body.transportFee != null

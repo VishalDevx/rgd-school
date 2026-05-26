@@ -25,7 +25,6 @@ interface FeeStructureForm {
   classId: string;
   categoryId: string;
   name: string;
-  tuitionFee: string;
   examFee: string;
   transportFee: string;
   miscFee: string;
@@ -54,7 +53,6 @@ export default function EditFeeStructurePage() {
     classId: "",
     categoryId: "",
     name: "",
-    tuitionFee: "",
     examFee: "",
     transportFee: "",
     miscFee: "",
@@ -81,7 +79,6 @@ export default function EditFeeStructurePage() {
           classId: structure.classId ?? "",
           categoryId: structure.categoryId ?? "",
           name: structure.name ?? "",
-          tuitionFee: structure.tuitionFee?.toString() ?? "",
           examFee: structure.examFee?.toString() ?? "",
           transportFee: structure.transportFee?.toString() ?? "",
           miscFee: structure.miscFee?.toString() ?? "",
@@ -193,17 +190,6 @@ export default function EditFeeStructurePage() {
                   value={form.name}
                   placeholder="Structure name (optional)"
                   onChange={(e) => onChange("name", e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="tuitionFee">Tuition Fee</Label>
-                <Input
-                  id="tuitionFee"
-                  type="number"
-                  value={form.tuitionFee}
-                  onChange={(e) => onChange("tuitionFee", e.target.value)}
-                  required
                 />
               </div>
 

@@ -36,7 +36,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (monthlyFee > 0) {
     total = monthlyFee * totalMonths;
   } else {
-    total = toNum(body.tuitionFee) + toNum(body.examFee) + toNum(body.transportFee) + toNum(body.miscFee);
+    total = toNum(body.examFee) + toNum(body.transportFee) + toNum(body.miscFee);
   }
 
   const updated = await db.feeStructure.update({
@@ -44,9 +44,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     data: {
       name: body.name ?? undefined,
       classId: body.classId ?? undefined,
-      categoryId: body.categoryId ?? undefined,
-      tuitionFee:
-        body.tuitionFee != null ? new Prisma.Decimal(Number(body.tuitionFee).toFixed(2)) : undefined,
+      categoryId: body.categoryId || undefined,
       examFee:
         body.examFee != null ? new Prisma.Decimal(Number(body.examFee).toFixed(2)) : undefined,
       transportFee:

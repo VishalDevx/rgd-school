@@ -8,7 +8,6 @@ import Image from "next/image";
 interface FeeSlipRow {
   structureId: string;
   structureName: string;
-  tuitionFee: number;
   examFee: number;
   transportFee: number;
   miscFee: number;
@@ -211,7 +210,6 @@ export function FeeSlipClient({ studentId }: { studentId: string }) {
               <tr className="bg-gray-100">
                 <th className="border px-3 py-2 text-left font-semibold">Fee Structure</th>
                 <th className="border px-3 py-2 text-right font-semibold">Monthly</th>
-                <th className="border px-3 py-2 text-right font-semibold">Tuition</th>
                 <th className="border px-3 py-2 text-right font-semibold">Exam</th>
                 <th className="border px-3 py-2 text-right font-semibold">Transport</th>
                 <th className="border px-3 py-2 text-right font-semibold">Misc</th>
@@ -227,7 +225,6 @@ export function FeeSlipClient({ studentId }: { studentId: string }) {
                   <td className="border px-3 py-2 text-right">
                     {row.monthlyFee ? `₹${row.monthlyFee}/mo×${row.totalMonths}` : "—"}
                   </td>
-                  <td className="border px-3 py-2 text-right">₹{row.tuitionFee.toLocaleString()}</td>
                   <td className="border px-3 py-2 text-right">₹{row.examFee.toLocaleString()}</td>
                   <td className="border px-3 py-2 text-right">₹{row.transportFee.toLocaleString()}</td>
                   <td className="border px-3 py-2 text-right">₹{row.miscFee.toLocaleString()}</td>

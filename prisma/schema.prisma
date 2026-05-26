@@ -324,12 +324,11 @@ model FeeStructure {
   classId      String
   categoryId   String?
   name         String?
-  amount       Decimal      @default(0) @db.Decimal(12, 2)
-  tuitionFee   Decimal?     @db.Decimal(12, 2)
-  examFee      Decimal?     @db.Decimal(12, 2)
-  transportFee Decimal?     @db.Decimal(12, 2)
-  miscFee      Decimal?     @db.Decimal(12, 2)
-  total        Decimal      @default(0) @db.Decimal(12, 2)
+  amount       Decimal       @default(0) @db.Decimal(12, 2)
+  examFee      Decimal?      @db.Decimal(12, 2)
+  transportFee Decimal?      @db.Decimal(12, 2)
+  miscFee      Decimal?      @db.Decimal(12, 2)
+  total        Decimal       @default(0) @db.Decimal(12, 2)
   monthlyFee   Decimal?     @db.Decimal(12, 2)
   totalMonths  Int          @default(12)
   isOptional   Boolean      @default(false)

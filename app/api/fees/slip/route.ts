@@ -94,7 +94,6 @@ export async function GET(req: NextRequest) {
           isActive: fs.class.academicSession?.isActive ?? false,
         },
         className: fs.class.name,
-        tuitionFee: Number(fs.tuitionFee),
         examFee: Number(fs.examFee ?? 0),
         transportFee: student.usesTransport ? Number(fs.transportFee ?? 0) : 0,
         miscFee: Number(fs.miscFee ?? 0),

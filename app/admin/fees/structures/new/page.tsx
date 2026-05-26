@@ -25,7 +25,6 @@ interface FeeStructureForm {
   classId: string;
   categoryId: string;
   name: string;
-  tuitionFee: string;
   examFee: string;
   transportFee: string;
   miscFee: string;
@@ -51,7 +50,6 @@ export default function NewFeeStructurePage() {
     classId: "",
     categoryId: "",
     name: "",
-    tuitionFee: "",
     examFee: "",
     transportFee: "",
     miscFee: "",
@@ -171,18 +169,6 @@ useEffect(() => {
                   value={form.name}
                   placeholder="Structure name (optional)"
                   onChange={(e) => onChange("name", e.target.value)}
-                />
-              </div>
-
-              {/* Tuition Fee */}
-              <div>
-                <Label htmlFor="tuitionFee">Tuition Fee</Label>
-                <Input
-                  id="tuitionFee"
-                  type="number"
-                  value={form.tuitionFee}
-                  onChange={(e) => onChange("tuitionFee", e.target.value)}
-                  required
                 />
               </div>
 
