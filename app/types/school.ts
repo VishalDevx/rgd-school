@@ -30,7 +30,6 @@ export interface IStudent {
   occupation: string;
   religion: string;
   caste: string;
-  udiseCode?: string | null;
   contactNo?: string | null;
   user: IUser;
 }

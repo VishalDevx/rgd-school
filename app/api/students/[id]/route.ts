@@ -83,7 +83,6 @@ export async function PUT(
         occupation: getStringField("occupation"),
         religion: getStringField("religion"),
         caste: getStringField("caste"),
-        udiseCode: getStringField("udiseCode"),
         panNo: getStringField("panNo"),
         apaarId: getStringField("apaarId"),
         fatherAadhar: getStringField("fatherAadhar"),

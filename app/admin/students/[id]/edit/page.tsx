@@ -17,7 +17,6 @@ import EditStudentForm from "@/app/components/StudentForm";
   occupation: string | null;
   religion: string | null;
   caste: string | null;
-  udiseCode: string | null;
   panNo: string | null;
   apaarId: string | null;
   fatherAadhar: string | null;
@@ -61,7 +60,6 @@ export default function EditStudentPage() {
           occupation: data.occupation ?? null,
           religion: data.religion ?? null,
           caste: data.caste ?? null,
-          udiseCode: data.udiseCode ?? null,
           contactNo: data.contactNo ?? null,
           panNo: data.panNo ?? null,
           apaarId: data.apaarId ?? null,

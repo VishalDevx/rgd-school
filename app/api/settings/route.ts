@@ -57,6 +57,7 @@ export async function PUT(req: NextRequest) {
       featureFlags?: unknown;
       principalName?: string | null;
       registrationNo?: string | null;
+      udiseCode?: string | null;
       receiptPrefix?: string | null;
       admissionPrefix?: string | null;
       staffIdPrefix?: string | null;
@@ -80,6 +81,7 @@ export async function PUT(req: NextRequest) {
       featureFlags,
       principalName,
       registrationNo,
+      udiseCode,
       receiptPrefix,
       admissionPrefix,
       staffIdPrefix,
@@ -112,6 +114,7 @@ export async function PUT(req: NextRequest) {
               : (existing.featureFlags ?? Prisma.DbNull),
             principalName: principalName !== undefined ? principalName : existing.principalName,
             registrationNo: registrationNo !== undefined ? registrationNo : existing.registrationNo,
+            udiseCode: udiseCode !== undefined ? udiseCode : existing.udiseCode,
             receiptPrefix: receiptPrefix !== undefined ? receiptPrefix : existing.receiptPrefix,
             admissionPrefix: admissionPrefix !== undefined ? admissionPrefix : existing.admissionPrefix,
             staffIdPrefix: staffIdPrefix !== undefined ? staffIdPrefix : existing.staffIdPrefix,
@@ -137,6 +140,7 @@ export async function PUT(req: NextRequest) {
             featureFlags: featureFlags as Prisma.InputJsonValue | undefined,
             principalName,
             registrationNo,
+            udiseCode,
             receiptPrefix,
             admissionPrefix,
             staffIdPrefix,

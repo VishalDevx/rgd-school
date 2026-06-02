@@ -62,7 +62,6 @@ interface StudentData {
   occupation?: string | null;
   religion?: string | null;
   caste?: string | null;
-  udiseCode?: string | null;
   contactNo?: string | null;
   active: boolean;
   admissionDate: string;
@@ -137,6 +136,7 @@ export default function StudentProfilePage() {
   const router = useRouter();
   const [student, setStudent] = useState<StudentData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [schoolUdise, setSchoolUdise] = useState<string | null>(null);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [resetPassword, setResetPassword] = useState<string | null>(null);
@@ -195,9 +195,17 @@ export default function StudentProfilePage() {
 
     const fetchStudent = async () => {
       try {
-        const res = await fetch(`/api/students/${params.id}`);
-        if (!res.ok) throw new Error("Failed to fetch student");
-        const data = await res.json();
+        const [studentRes, settingsRes] = await Promise.all([
+          fetch(`/api/students/${params.id}`),
+          fetch("/api/settings"),
+        ]);
+        if (!studentRes.ok) throw new Error("Failed to fetch student");
+        const data = await studentRes.json();
+
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          setSchoolUdise(settingsData.udiseCode ?? null);
+        }
 
         // Normalize dates to strings for rendering
         const normalized: StudentData = {
@@ -432,7 +440,7 @@ export default function StudentProfilePage() {
                 {new Date(student.admissionDate).toDateString()}
               </p>
               <p>
-                <strong>UDISE No:</strong> {student.udiseCode || "N/A"}
+                <strong>UDISE No:</strong> {schoolUdise || "N/A"}
               </p>
               <p>
                 <strong>Admission No:</strong> {student.admissionNo}

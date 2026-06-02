@@ -47,7 +47,6 @@ interface FormState {
   occupation: string;
   fatherName: string;
   motherName: string;
-  udiseCode: string;
   panNo: string;
   apaarId: string;
   fatherAadhar: string;
@@ -81,7 +80,6 @@ export default function NewStudentPage() {
     occupation: "",
     fatherName: "",
     motherName: "",
-    udiseCode: "",
     panNo: "",
     apaarId: "",
     fatherAadhar: "",
@@ -170,7 +168,6 @@ export default function NewStudentPage() {
                 ["Roll Number", "rollNumber"],
                 ["Father Name", "fatherName"],
                 ["Mother Name", "motherName"],
-                ["UDISE Code", "udiseCode"],
                 ["Pan No", "panNo"],
                 ["APAAR ID", "apaarId"],
                 ["Father Aadhar", "fatherAadhar"],

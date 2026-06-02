@@ -36,6 +36,7 @@ interface SchoolSettings {
   updatedAt: string;
   principalName: string | null;
   registrationNo: string | null;
+  udiseCode: string | null;
   receiptPrefix: string | null;
   admissionPrefix: string | null;
   staffIdPrefix: string | null;
@@ -63,6 +64,7 @@ export default function SettingsPage() {
     tier: "BASIC" as "BASIC" | "PRO" | "ENTERPRISE",
     principalName: "",
     registrationNo: "",
+    udiseCode: "",
     receiptPrefix: "",
     admissionPrefix: "",
     staffIdPrefix: "",
@@ -96,6 +98,7 @@ export default function SettingsPage() {
         tier: data.tier || "BASIC",
         principalName: data.principalName || "",
         registrationNo: data.registrationNo || "",
+        udiseCode: data.udiseCode || "",
         receiptPrefix: data.receiptPrefix || "",
         admissionPrefix: data.admissionPrefix || "",
         staffIdPrefix: data.staffIdPrefix || "",
@@ -213,6 +216,15 @@ export default function SettingsPage() {
                   value={formData.registrationNo}
                   onChange={(e) => setFormData({ ...formData, registrationNo: e.target.value })}
                   placeholder="RGD/2024/001"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="udiseCode">UDISE Code</Label>
+                <Input
+                  id="udiseCode"
+                  value={formData.udiseCode}
+                  onChange={(e) => setFormData({ ...formData, udiseCode: e.target.value })}
+                  placeholder="UPXXXXXXXX"
                 />
               </div>
             </div>

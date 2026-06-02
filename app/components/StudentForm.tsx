@@ -45,7 +45,6 @@ const StudentEditSchema = z.object({
   occupation: z.string().optional(),
   religion: z.string().optional(),
   caste: z.string().optional(),
-  udiseCode: z.string().optional(),
   panNo: z.string().optional(),
   apaarId: z.string().optional(),
   fatherAadhar: z.string().optional(),
@@ -74,7 +73,6 @@ interface EditStudentFormProps {
     occupation: string | null;
     religion: string | null;
     caste: string | null;
-    udiseCode: string | null;
     panNo: string | null;
     apaarId: string | null;
     fatherAadhar: string | null;
@@ -119,7 +117,6 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
       occupation: student.occupation ?? "",
       religion: student.religion ?? "",
       caste: student.caste ?? "",
-      udiseCode: student.udiseCode ?? "",
       panNo: student.panNo ?? "",
       apaarId: student.apaarId ?? "",
       fatherAadhar: student.fatherAadhar ?? "",
@@ -338,7 +335,6 @@ export default function EditStudentForm({ student, onSubmit }: EditStudentFormPr
                 "occupation",
                 "religion",
                 "caste",
-                "udiseCode",
                 "contactNo",
               ].map((fieldName) => (
                 <FormField

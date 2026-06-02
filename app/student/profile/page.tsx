@@ -44,7 +44,6 @@ interface StudentProfile {
   occupation: string;
   religion: string;
   caste: string;
-  udiseCode: string | null;
   contactNo: string | null;
   user: {
     id: string;
@@ -92,16 +91,24 @@ interface ProfileData {
 export default function StudentProfilePage() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [schoolUdise, setSchoolUdise] = useState<string | null>(null);
   const profilePdf = usePDF(`${data?.student?.user?.name ?? "Student"}_Profile.pdf`);
   const admissionPdf = usePDF(`${data?.student?.user?.name ?? "Student"}_Admission_Form.pdf`);
 
   useEffect(() => {
     async function fetchProfile() {
       try {
-        const res = await fetch("/api/student/profile");
-        if (res.ok) {
-          const profileData = await res.json();
+        const [profileRes, settingsRes] = await Promise.all([
+          fetch("/api/student/profile"),
+          fetch("/api/settings"),
+        ]);
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
           setData(profileData);
+        }
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json();
+          setSchoolUdise(settingsData.udiseCode ?? null);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -138,6 +145,7 @@ export default function StudentProfilePage() {
     gender: student.gender, bloodGroup: null, category: null,
     email: student.user.email, phone: student.user.phone,
     address: student.address, guardianPhone: student.contactNo,
+    udise: schoolUdise, aadharNo: student.user.adharNo,
   };
 
   return (
@@ -360,12 +368,12 @@ export default function StudentProfilePage() {
                 </div>
               )}
 
-              {student.udiseCode && (
+              {schoolUdise && (
                 <div>
                   <label className="text-sm font-medium text-gray-500 mb-1">
                     UDISE Code
                   </label>
-                  <p className="text-gray-900">{student.udiseCode}</p>
+                  <p className="text-gray-900">{schoolUdise}</p>
                 </div>
               )}
 

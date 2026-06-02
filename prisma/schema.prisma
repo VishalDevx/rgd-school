@@ -86,6 +86,7 @@ model SchoolSettings {
   heroImages   Json?
   principalName String?
   registrationNo String?
+  udiseCode     String?
   receiptPrefix String?
   admissionPrefix String?
   staffIdPrefix String?
@@ -235,7 +236,6 @@ model Student {
   religion      String         @default("")
   caste         String         @default("")
   category      String?
-  udiseCode     String?        @unique
   contactNo     String?
   panNo         String?
   apaarId       String?
