@@ -268,10 +268,20 @@ export async function DELETE(
       );
     }
 
-    await db.student.delete({
-      where: {
-        id: studentId,
-      },include:{fees:true,results:true,attendance:true}
+    const student = await db.student.findUnique({
+      where: { id: studentId },
+      select: { userId: true },
+    });
+
+    if (!student) {
+      return new Response(
+        JSON.stringify({ error: "Student not found" }),
+        { status: 404 }
+      );
+    }
+
+    await db.user.delete({
+      where: { id: student.userId },
     });
 
     return new Response(
