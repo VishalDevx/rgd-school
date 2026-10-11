@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/app/components/ui/select";
 import { toast } from "sonner";
-import { ExamCategory } from "@prisma/client";
+import { ExamCategory } from "@/lib/enums";
 
 /* ---------- Types ---------- */
 

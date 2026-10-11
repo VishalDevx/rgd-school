@@ -1,7 +1,7 @@
 // app/admin/classes/page.tsx (Server Component)
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { authOption } from "@/app/lib/auth";
 import ClassesTableClient from "@/app/components/ClassesTableClient";
 

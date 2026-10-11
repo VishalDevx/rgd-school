@@ -9,7 +9,7 @@ export default async function UsersPage() {
   const session = await getServerSession(authOption);
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login");
 
-  const { db } = await import("@/lib/prisma");
+  const { db } = await import("@/lib/db");
 
   const [
     totalUsers,

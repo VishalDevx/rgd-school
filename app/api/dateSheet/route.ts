@@ -1,7 +1,7 @@
 import { authOption } from "@/app/lib/auth";
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { _success } from "zod/v4/core";
 
 

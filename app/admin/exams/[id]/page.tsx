@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import ExamDetailClient from "@/app/components/ExamDetailClient";
+import type { Row } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function ExamDetailPage({
     startDate: exam.startDate.toISOString(),
     endDate: exam.endDate.toISOString(),
     createdAt: exam.createdAt.toISOString(),
-    dateSheet: exam.dateSheet.map((d) => ({
+    dateSheet: exam.dateSheet.map((d: Row) => ({
       ...d,
       examDate: d.examDate.toISOString(),
       startTime: d.startTime.toISOString(),

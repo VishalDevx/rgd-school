@@ -1,35 +1,49 @@
-import {
-  PrismaClient,
-  Role,
-  Grade,
-  ExamCategory,
-  AttendanceStatus,
-  TransactionType,
-  NotificationType,
-} from "@prisma/client";
+/**
+ * Shared seeding logic, used by both `npm run seed` and the live test suite.
+ * Keeping it separate lets the tests run against a throwaway database.
+ */
 import bcrypt from "bcryptjs";
 
-const db = new PrismaClient();
+import { db } from "@/lib/db";
+import { AttendanceStatus, ExamCategory, FeeStatus, NotificationType, Role, TransactionType } from "@/lib/enums";
 
-async function main() {
-  console.log("🌱 Resetting database...");
+/** Wipe every collection, sync indexes, and insert the demo dataset. */
+export async function seed(): Promise<void> {
 
-  // ================= DELETE (CHILD → PARENT) =================
+  console.log("Syncing indexes...");
+  await db.syncIndexes();
+
+  console.log("Resetting database...");
+
+  // Child -> parent order (MongoDB has no FK constraints, but this keeps the
+  // cleanup predictable).
   await db.result.deleteMany();
   await db.examDateSheet.deleteMany();
   await db.exam.deleteMany();
   await db.attendance.deleteMany();
   await db.feePayment.deleteMany();
   await db.feeStructure.deleteMany();
+  await db.feeCategory.deleteMany();
   await db.subject.deleteMany();
+  await db.studentDocument.deleteMany();
   await db.student.deleteMany();
+  await db.transportAssignment.deleteMany();
   await db.leave.deleteMany();
+  await db.staffAttendance.deleteMany();
+  await db.staffDocument.deleteMany();
   await db.staff.deleteMany();
   await db.expense.deleteMany();
+  await db.expenseCategory.deleteMany();
   await db.notification.deleteMany();
   await db.announcementVisibility.deleteMany();
   await db.announcement.deleteMany();
+  await db.certificate.deleteMany();
+  await db.idCard.deleteMany();
   await db.auditLog.deleteMany();
+  await db.homeworkSubmission.deleteMany();
+  await db.homework.deleteMany();
+  await db.studyMaterial.deleteMany();
+  await db.timetable.deleteMany();
   await db.account.deleteMany();
   await db.session.deleteMany();
   await db.verificationToken.deleteMany();
@@ -50,10 +64,7 @@ async function main() {
 
   // ================= ACADEMIC SESSION =================
   const session = await db.academicSession.create({
-    data: {
-      name: "2024-2025",
-      isActive: true,
-    },
+    data: { name: "2024-2025", isActive: true },
   });
 
   // ================= PASSWORDS =================
@@ -105,7 +116,7 @@ async function main() {
   const class9A = await db.class.create({
     data: {
       name: "Class 9 A",
-      grade: Grade.NINE,
+      grade: "NINE",
       section: "A",
       academicSessionId: session.id,
       teacherId: staff.id,
@@ -127,21 +138,11 @@ async function main() {
 
   // ================= SUBJECTS =================
   const math = await db.subject.create({
-    data: {
-      name: "Mathematics",
-      code: "MATH-9",
-      classId: class9A.id,
-      teacherId: staff.id,
-    },
+    data: { name: "Mathematics", code: "MATH-9", classId: class9A.id, teacherId: staff.id },
   });
 
   const science = await db.subject.create({
-    data: {
-      name: "Science",
-      code: "SCI-9",
-      classId: class9A.id,
-      teacherId: staff.id,
-    },
+    data: { name: "Science", code: "SCI-9", classId: class9A.id, teacherId: staff.id },
   });
 
   // ================= ATTENDANCE =================
@@ -157,15 +158,15 @@ async function main() {
     ],
   });
 
-  // ================= FEE =================
+  // ================= FEES =================
   const fee = await db.feeStructure.create({
     data: {
       classId: class9A.id,
       name: "Annual Fee",
-      examFee: "0",
-      miscFee: "0",
-      total: "0",
-      monthlyFee: "450",
+      examFee: 0,
+      miscFee: 0,
+      total: 0,
+      monthlyFee: 450,
       totalMonths: 12,
     },
   });
@@ -174,9 +175,9 @@ async function main() {
     data: {
       studentId: student.id,
       feeStructureId: fee.id,
-      amountPaid: "0",
-      remainAmount: "5400",
-      status: "PENDING",
+      amountPaid: 0,
+      remainAmount: 5400,
+      status: FeeStatus.PENDING,
     },
   });
 
@@ -280,7 +281,7 @@ async function main() {
   await db.expense.create({
     data: {
       title: "Electricity Bill",
-      amount: "8500",
+      amount: 8500,
       createdById: admin.id,
       transaction: TransactionType.DEBIT,
     },
@@ -297,14 +298,8 @@ async function main() {
     },
   });
 
-  console.log("✅ FULL DATABASE SEEDED (NO TABLE LEFT)");
+  console.log("FULL DATABASE SEEDED");
+
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await db.$disconnect();
-  });
+export default seed;

@@ -1,8 +1,8 @@
-# RGD School – SaaS (Next.js + TypeScript + Prisma + PostgreSQL)
+# RGD School – SaaS (Next.js + TypeScript + Mongoose + MongoDB)
 
 ## Prerequisites
 - Node.js 18+
-- PostgreSQL database URL in your env (`DATABASE_URL`)
+- A MongoDB Atlas cluster URL in your env (`MONGODB_URI`)
 - Strong `NEXTAUTH_SECRET`
 
 ## Setup
@@ -12,7 +12,7 @@
    ```
 2. Set env vars (create `.env`):
    ```bash
-   DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DB_NAME?schema=public
+   MONGODB_URI=mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/rgd_school?appName=Cluster0
    NEXTAUTH_SECRET=your-strong-secret
    NEXTAUTH_URL=http://localhost:3000
    # Supabase (uploads/notifications features)
@@ -28,20 +28,45 @@
    UPSTASH_REDIS_REST_URL=...
    UPSTASH_REDIS_REST_TOKEN=...
    ```
-3. Generate Prisma client and run migrations:
-   ```bash
-   npx prisma generate
-   npx prisma migrate deploy
-   # or during dev: npx prisma migrate dev
-   ```
-4. Seed sample data (optional):
+3. Create the collections and indexes, then seed sample data (optional):
    ```bash
    npm run seed
    ```
-5. Run locally:
+   `npm run seed` wipes and repopulates every collection. To only build indexes
+   without touching data, call `db.syncIndexes()` from a script.
+4. Run locally:
    ```bash
    npm run dev
    ```
+
+## Data layer
+- Mongoose schemas live in `models/` (one file per domain).
+- The app-facing data client is `lib/db.ts`, exported as `db`. It exposes a
+  Prisma-shaped API (`findMany({ where, include, orderBy, take, skip })`,
+  `upsert`, `createMany`, `aggregate`, `_count`, …) implemented over MongoDB, so
+  route handlers read the same as they did under Prisma.
+- Query translation (Prisma `where`/operator syntax → Mongo filters) is in
+  `lib/db/query.ts`; relation and compound-unique-key handling is in
+  `lib/db/relations.ts` and `lib/db/repository.ts`.
+- MongoDB has no enums, so the enum string lists are in `lib/enums.ts` and
+  values are unchanged from the old Prisma enums.
+
+### Things to know about MongoDB here
+- **No multi-document transactions on the Atlas free tier (M0).** `db.$transaction`
+  throws by design. Multi-write routes use explicit compensating deletes instead.
+- **Sparse unique indexes.** `IDCard.studentId`/`staffId`, `FeePayment.razorpayOrder`
+  and `User.phone` are optional and sparse, otherwise every second row with a null
+  would collide.
+- **Partial unique indexes.** `Student(classId, rollNumber)` and
+  `Exam(classId, category, sequence)` use `partialFilterExpression`, because
+  MongoDB would otherwise treat the missing optional field as `null` and collide.
+- **Money is stored as a double** and rounded via `lib/money.ts` helpers.
+
+## Tests
+```bash
+npm test          # query translator + schema/relation metadata checks
+npm run typecheck # tsc --noEmit
+```
 
 ## Roles
 - ADMIN, STAFF (email + password)
@@ -56,7 +81,7 @@ Login test users (if seeded):
 - Push repo to GitHub/GitLab
 - Create Vercel project
 - Set Environment Variables in Vercel:
-  - `DATABASE_URL`
+  - `MONGODB_URI`
   - `NEXTAUTH_SECRET`
   - `NEXTAUTH_URL` (e.g., your Vercel domain)
   - `SUPABASE_URL`
@@ -67,18 +92,19 @@ Login test users (if seeded):
     - Alternatively set Vercel’s `CRON_SECRET` env var and it will call cron jobs with `Authorization: Bearer $CRON_SECRET`
   - `UPSTASH_REDIS_REST_URL`
   - `UPSTASH_REDIS_REST_TOKEN`
-- Vercel runs `npm install` (triggers `postinstall: prisma generate`) and `next build`
-- Run migrations via Vercel CLI or a one-off job:
+- Vercel runs `npm install` and `next build`. There is no migration step.
+- Run the seed/index sync once against the production cluster if you need the
+  baseline data:
   ```bash
-  npx prisma migrate deploy
+  npm run seed
   ```
 
 ## Notes
 - Middleware enforces role-based access and redirects.
 - Per-role layouts include a sidebar from `app/config/sidebarItem.ts`.
-- Prisma client is in `lib/prisma.ts`.
- - Subscription tiers stored in `SchoolSettings.tier` (BASIC/PRO/ENTERPRISE) with optional `featureFlags` overrides.
- - Feature gating helper in `app/lib/features.ts`.
+- The database client is `lib/db.ts`; connection handling is `lib/mongodb.ts`.
+- Subscription tiers stored in `SchoolSettings.tier` (BASIC/PRO/ENTERPRISE) with optional `featureFlags` overrides.
+- Feature gating helper in `app/lib/features.ts`.
 
 ## Cron jobs (single school)
 - Student promotion (year-end):

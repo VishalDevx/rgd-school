@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
-import type { AttendanceStatus } from "@prisma/client";
+import { db } from "@/lib/db";
+import type { AttendanceStatus } from "@/lib/enums";
 
 interface AttendanceRecord {
   studentId: string;

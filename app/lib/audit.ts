@@ -1,4 +1,4 @@
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 interface AuditPayload {
   userId?: string | null;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
-import type { FeePayment, Expense } from "@prisma/client";
+import { db } from "@/lib/db";
+import type { FeePaymentRow as FeePayment, ExpenseRow as Expense } from "@/lib/types";
 
 function ym(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;

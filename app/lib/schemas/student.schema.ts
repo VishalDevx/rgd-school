@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Gender } from "@prisma/client";
+import { Gender } from "@/lib/enums";
 
 export const StudentCreateSchema = z.object({
   name: z.string(),

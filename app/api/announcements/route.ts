@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { AnnouncementPayloadSchema } from "@/app/lib/schemas/annoucement.schema.";
-import type { Role } from "@prisma/client";
+import type { Role } from "@/lib/enums";
 import { authOption } from "@/app/lib/auth";
+import { logger } from "@/app/lib/logger";
+
+const log = logger("announcements-route");
 
 // GET all announcements
 export async function GET(_request: NextRequest) {
@@ -43,17 +46,25 @@ export async function POST(request: NextRequest) {
   // enforce type safety
   const safeRoles: Role[] = roles as Role[];
 
-  const created = await db.$transaction(async (tx) => {
-    const ann = await tx.announcement.create({
+  // NOTE: this used to be wrapped in db.$transaction. MongoDB Atlas free tier
+  // has no replica set, so multi-document transactions are unavailable. We
+  // create in order and compensate by deleting the announcement (and its
+  // visibility rows) if a later step fails. Notification rows are left alone:
+  // they are keyed by title, so deleting them could remove unrelated ones.
+  let created;
+  let annId: string | null = null;
+  try {
+    const ann = await db.announcement.create({
       data: {
         title,
         content,
         createdBy: session.user.id,
       },
     });
+    annId = ann.id;
 
     if (safeRoles.length > 0) {
-      await tx.announcementVisibility.createMany({
+      await db.announcementVisibility.createMany({
         data: safeRoles.map((role: Role) => ({
           announcementId: ann.id,
           role,
@@ -62,13 +73,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-create Notification records for users matching selected roles
-    const targetUsers = await tx.user.findMany({
+    const targetUsers = await db.user.findMany({
       where: { role: { in: safeRoles }, isActive: true },
       select: { id: true },
     });
 
     if (targetUsers.length > 0) {
-      await tx.notification.createMany({
+      await db.notification.createMany({
         data: targetUsers.map((u) => ({
           userId: u.id,
           type: "ANNOUNCEMENT",
@@ -78,8 +89,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return ann;
-  });
+    created = ann;
+  } catch (err) {
+    log.error("POST /announcements failed, rolling back", err);
+    if (annId) {
+      await db.announcementVisibility.deleteMany({ announcementId: annId });
+      await db.announcement.delete({ where: { id: annId } }).catch(() => undefined);
+    }
+    throw err;
+  }
 
   return NextResponse.json(created, { status: 201 });
 }

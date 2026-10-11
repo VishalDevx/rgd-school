@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
+import { money } from "@/lib/money";
+import type { JsonInput } from "@/lib/types";
 
 export async function GET() {
   const session = await getServerSession(authOption);
@@ -84,13 +85,13 @@ export async function POST(req: NextRequest) {
     result = await db.feePayment.update({
       where: { id: existing.id },
       data: {
-        amountPaid: new Prisma.Decimal(totalPaid.toFixed(2)),
-        remainAmount: new Prisma.Decimal(remaining.toFixed(2)),
+        amountPaid: money(totalPaid.toFixed(2)),
+        remainAmount: money(remaining.toFixed(2)),
         status,
         paymentDate: body.paymentDate ? new Date(body.paymentDate) : new Date(),
         paymentMode: body.paymentMode ?? existing.paymentMode,
-        discount: discount > 0 ? new Prisma.Decimal(discount.toFixed(2)) : existing.discount,
-        lateFine: lateFine > 0 ? new Prisma.Decimal(lateFine.toFixed(2)) : existing.lateFine,
+        discount: discount > 0 ? money(discount.toFixed(2)) : existing.discount,
+        lateFine: lateFine > 0 ? money(lateFine.toFixed(2)) : existing.lateFine,
         receiptNo: body.receiptNo ?? existing.receiptNo,
         remarks: body.remarks ?? existing.remarks,
       },
@@ -115,13 +116,13 @@ export async function POST(req: NextRequest) {
       data: {
         studentId: String(body.studentId),
         feeStructureId: String(body.feeStructureId),
-        amountPaid: new Prisma.Decimal(netAmount.toFixed(2)),
-        remainAmount: new Prisma.Decimal(remaining.toFixed(2)),
+        amountPaid: money(netAmount.toFixed(2)),
+        remainAmount: money(remaining.toFixed(2)),
         status,
         paymentDate: body.paymentDate ? new Date(body.paymentDate) : new Date(),
         paymentMode: body.paymentMode ?? null,
-        discount: discount > 0 ? new Prisma.Decimal(discount.toFixed(2)) : null,
-        lateFine: lateFine > 0 ? new Prisma.Decimal(lateFine.toFixed(2)) : null,
+        discount: discount > 0 ? money(discount.toFixed(2)) : null,
+        lateFine: lateFine > 0 ? money(lateFine.toFixed(2)) : null,
         receiptNo,
         remarks: body.remarks ?? null,
       },
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
         remainAmount: result.remainAmount,
         status: result.status,
         receiptNo: result.receiptNo,
-      } as Prisma.InputJsonValue,
+      } as JsonInput,
     },
   });
 

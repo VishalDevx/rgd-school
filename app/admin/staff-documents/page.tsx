@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import StaffDocumentsTable from "@/app/components/StaffDocumentsTable";
 
 export const dynamic = "force-dynamic";

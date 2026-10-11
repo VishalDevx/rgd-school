@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
 import { getSupabaseServiceClient } from "@/app/lib/supabaseClient";
-import type { Gender } from "@prisma/client";
+import type { Gender } from "@/lib/enums";
 import { createAuditLog } from "@/app/lib/audit";
 
 export const runtime = "nodejs";

@@ -1,6 +1,6 @@
 import { authOption } from "@/app/lib/auth";
 import { SubjectSchema, SubjectType } from "@/app/lib/schemas/subject.schema";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { NextRequest, NextResponse } from "next/server";
 

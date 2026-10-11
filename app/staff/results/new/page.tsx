@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import StaffResultsAdd from "@/app/components/StaffResultsAdd";
 
 export default async function ResultUploadPage() {

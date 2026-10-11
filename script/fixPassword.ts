@@ -1,4 +1,4 @@
-import { db } from "@/lib/prisma"
+import { db } from "@/lib/db"
 
 async function fixPasswords() {
   const users = await db.user.findMany()

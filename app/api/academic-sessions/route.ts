@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 /* ----------------------------- GET ----------------------------- */
 /* Fetch all academic sessions */

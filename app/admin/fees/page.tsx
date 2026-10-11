@@ -2,8 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
-import { Decimal } from "@prisma/client/runtime/library";
+import { db } from "@/lib/db";
 
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
@@ -15,11 +14,11 @@ import RecentPaymentsTable from "@/app/components/RecentPaymentsTable";
 type FeeStructureRaw = {
   id: string;
   name: string | null;
-  amount: Decimal;
-  examFee: Decimal | null;
-  transportFee: Decimal | null;
-  miscFee: Decimal | null;
-  total: Decimal;
+  amount: number;
+  examFee: number | null;
+  transportFee: number | null;
+  miscFee: number | null;
+  total: number;
   isOptional: boolean;
   categoryId: string | null;
   dueDate: Date | null;
@@ -30,8 +29,8 @@ type FeePaymentRaw = {
   id: string;
   createdAt: Date;
   status: "PAID" | "PARTIAL" | "PENDING";
-  amountPaid: Decimal;
-  remainAmount: Decimal;
+  amountPaid: number;
+  remainAmount: number;
   student: { id: string; user: { name: string; email: string } };
   feeStructure: { id: string; name: string | null };
 };
@@ -46,9 +45,9 @@ interface PaymentRecord {
   feeStructureName: string | null;
 }
 
-function toNumber(value: Decimal | number | null): number {
-  if (value === null) return 0;
-  return typeof value === "number" ? value : value.toNumber();
+function toNumber(value: number | string | null): number {
+  if (value === null || value === undefined) return 0;
+  return typeof value === "number" ? value : Number(value);
 }
 
 function normalizePayment(raw: FeePaymentRaw): PaymentRecord {

@@ -1,5 +1,6 @@
-import { db } from "@/lib/prisma";
-import type { Class, Grade, Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
+import type { Grade } from "@/lib/enums";
+import type { ClassRow as Class, JsonInput } from "@/lib/types";
 
 const gradeOrder: string[] = [
   "NURSERY",
@@ -115,7 +116,7 @@ export async function promoteAllActiveStudents() {
         createdClasses,
         promotedCount,
         moves,
-      } as Prisma.InputJsonValue,
+      } as JsonInput,
     },
   });
 

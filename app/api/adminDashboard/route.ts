@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export async function GET() {
   const [totalStudents, totalStaff, totalClasses, totalExpenses] =

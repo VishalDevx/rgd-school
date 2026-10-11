@@ -1,7 +1,9 @@
-import { PrismaClient, Role } from "@prisma/client";
-import bcrypt from "bcryptjs";
+// Must be first: loads .env before anything reads process.env.MONGODB_URI.
+import "dotenv/config";
 
-const db = new PrismaClient();
+import { db } from "@/lib/db";
+import { Role } from "@/lib/enums";
+import bcrypt from "bcryptjs";
 
 async function main() {
   const hash = await bcrypt.hash("Pass@123", 10);

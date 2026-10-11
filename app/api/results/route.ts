@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
-import type { Prisma } from "@prisma/client";
+import type { WhereInput } from "@/lib/types";
 
 /* ================= TYPES ================= */
 
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     }
 
     // Force studentId to be the logged-in student's ID
-    const whereClause: Prisma.ResultWhereInput = {
+    const whereClause: WhereInput = {
       studentId: student.id,
     };
 

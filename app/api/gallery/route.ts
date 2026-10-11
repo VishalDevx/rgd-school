@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getSupabaseServiceClient } from "@/app/lib/supabaseClient";
-import { Prisma } from "@prisma/client";
+import type { JsonInput } from "@/lib/types";
 
 // GET gallery images
 export async function GET() {
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
         action: "ADD_GALLERY_IMAGE",
         entity: "SchoolSettings",
         entityId: settings!.id,
-        newValue: { image: newImage } as Prisma.InputJsonValue,
+        newValue: { image: newImage } as JsonInput,
       },
     });
 
@@ -186,7 +186,7 @@ export async function DELETE(req: NextRequest) {
         action: "DELETE_GALLERY_IMAGE",
         entity: "SchoolSettings",
         entityId: settings.id,
-        oldValue: { image: removedImage } as Prisma.InputJsonValue,
+        oldValue: { image: removedImage } as JsonInput,
       },
     });
 

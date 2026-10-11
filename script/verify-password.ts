@@ -1,7 +1,8 @@
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+// Must be first: loads .env before anything reads process.env.MONGODB_URI.
+import "dotenv/config";
 
-const db = new PrismaClient();
+import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 async function main() {
   for (const email of ["admin@school.com", "teacher@school.com", "student@school.com"]) {

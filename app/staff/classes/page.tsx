@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import Link from "next/link";
 import {
   Card,
@@ -19,6 +19,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { authOption } from "@/app/lib/auth";
+import type { Row } from "@/lib/types";
 
 export default async function StaffClassesPage() {
   const session = await getServerSession(authOption);
@@ -169,7 +170,7 @@ export default async function StaffClassesPage() {
                 <div className="mb-4">
                   <p className="text-xs font-medium text-gray-500 mb-2">Subjects:</p>
                   <div className="flex flex-wrap gap-1">
-                    {cls.subjects.slice(0, 3).map((subj) => (
+                    {cls.subjects.slice(0, 3).map((subj: Row) => (
                       <Badge key={subj.id} variant="outline" className="text-xs">
                         {subj.name}
                       </Badge>

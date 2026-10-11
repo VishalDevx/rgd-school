@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { redirect, notFound } from "next/navigation";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 import {
   Card,
@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/app/components/ui/badge";
 import { Button } from "@/app/components/ui/button";
 import Link from "next/link";
+import type { Row } from "@/lib/types";
 import {
   Users,
   BookOpen,
@@ -143,7 +144,7 @@ export default async function StaffClassDetailPage({ params }: PageProps) {
           <CardContent>
             {cls.subjects.length > 0 ? (
               <div className="space-y-3">
-                {cls.subjects.map((subject) => (
+                {cls.subjects.map((subject: Row) => (
                   <div
                     key={subject.id}
                     className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -236,7 +237,7 @@ export default async function StaffClassDetailPage({ params }: PageProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {cls.students.map((student) => (
+                  {cls.students.map((student: Row) => (
                     <tr
                       key={student.id}
                       className="border-b hover:bg-gray-50 transition-colors"

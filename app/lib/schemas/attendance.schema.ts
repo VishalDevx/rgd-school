@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AttendanceStatus } from "@prisma/client";
+import { AttendanceStatus } from "@/lib/enums";
 
 export const AttendanceSchema = z.object({
   classId: z.string(),

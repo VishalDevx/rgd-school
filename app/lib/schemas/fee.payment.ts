@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { FeeStatus } from "@prisma/client";
+import { FeeStatus } from "@/lib/enums";
 
 export const FeePaymentSchema = z.object({
   studentId: z.string(),

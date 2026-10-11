@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
-import { Prisma } from "@prisma/client";
 import { authOption } from "@/app/lib/auth";
 import { createAuditLog } from "@/app/lib/audit";
+import { money } from "@/lib/money";
 
 // ---------- Types ----------
 interface FeeStructureBody {
@@ -76,15 +76,15 @@ export async function POST(req: NextRequest) {
       classId: body.classId,
       categoryId: body.categoryId || null,
       name: body.name ?? null,
-      examFee: body.examFee != null ? new Prisma.Decimal(exam.toFixed(2)) : null,
+      examFee: body.examFee != null ? money(exam.toFixed(2)) : null,
       transportFee:
         body.transportFee != null
-          ? new Prisma.Decimal(transport.toFixed(2))
+          ? money(transport.toFixed(2))
           : null,
       miscFee:
-        body.miscFee != null ? new Prisma.Decimal(misc.toFixed(2)) : null,
-      total: new Prisma.Decimal(total.toFixed(2)),
-      monthlyFee: monthlyFee > 0 ? new Prisma.Decimal(monthlyFee.toFixed(2)) : null,
+        body.miscFee != null ? money(misc.toFixed(2)) : null,
+      total: money(total.toFixed(2)),
+      monthlyFee: monthlyFee > 0 ? money(monthlyFee.toFixed(2)) : null,
       totalMonths: monthlyFee > 0 ? totalMonths : 12,
     },
   });
@@ -95,8 +95,11 @@ export async function POST(req: NextRequest) {
   });
 
   // ----- Auto-create FeePayment (adjust transport fee per student) -----
+  // NOTE: previously db.$transaction([...promises]). MongoDB Atlas free tier
+  // has no replica set, so these independent inserts run concurrently instead.
+  // If one fails the rest still commit.
   if (students.length > 0) {
-    await db.$transaction(
+    await Promise.all(
       students.map((s) => {
         let adjustedTotal = total;
         if (!s.usesTransport && transport > 0) {
@@ -106,8 +109,8 @@ export async function POST(req: NextRequest) {
           data: {
             studentId: s.id,
             feeStructureId: created.id,
-            amountPaid: new Prisma.Decimal(0),
-            remainAmount: new Prisma.Decimal(adjustedTotal.toFixed(2)),
+            amountPaid: 0,
+            remainAmount: money(adjustedTotal),
             status: "PENDING",
           },
         });

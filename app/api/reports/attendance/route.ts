@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
-import { Prisma } from "@prisma/client";
+import type { WhereInput } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const classId = searchParams.get("classId");
     const studentId = searchParams.get("studentId");
 
-    const where: Prisma.AttendanceWhereInput = {};
+    const where: WhereInput = {};
     if (fromDate || toDate) {
       where.date = {};
       if (fromDate) where.date.gte = new Date(fromDate);

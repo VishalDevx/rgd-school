@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { authorizeCron, executeCronJob } from "@/app/lib/cron";
 
 export async function POST(req: NextRequest) {

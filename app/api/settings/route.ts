@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
+import type { JsonInput } from "@/lib/types";
 
 // GET school settings
 export async function GET() {
@@ -110,8 +110,8 @@ export async function PUT(req: NextRequest) {
             primaryColor: primaryColor !== undefined ? primaryColor : existing.primaryColor,
             tier: tier ?? existing.tier,
             featureFlags: featureFlags !== undefined 
-              ? (featureFlags as Prisma.InputJsonValue) 
-              : (existing.featureFlags ?? Prisma.DbNull),
+              ? (featureFlags as JsonInput) 
+              : (existing.featureFlags ?? null),
             principalName: principalName !== undefined ? principalName : existing.principalName,
             registrationNo: registrationNo !== undefined ? registrationNo : existing.registrationNo,
             udiseCode: udiseCode !== undefined ? udiseCode : existing.udiseCode,
@@ -137,7 +137,7 @@ export async function PUT(req: NextRequest) {
             faviconUrl,
             primaryColor: primaryColor || "#2563eb",
             tier: tier || "BASIC",
-            featureFlags: featureFlags as Prisma.InputJsonValue | undefined,
+            featureFlags: featureFlags as JsonInput | undefined,
             principalName,
             registrationNo,
             udiseCode,
@@ -161,9 +161,9 @@ export async function PUT(req: NextRequest) {
         entity: "SchoolSettings",
         entityId: updated.id,
         oldValue: existing 
-          ? (JSON.parse(JSON.stringify(existing)) as Prisma.InputJsonValue)
-          : Prisma.DbNull,
-        newValue: JSON.parse(JSON.stringify(updated)) as Prisma.InputJsonValue,
+          ? (JSON.parse(JSON.stringify(existing)) as JsonInput)
+          : null,
+        newValue: JSON.parse(JSON.stringify(updated)) as JsonInput,
       },
     });
 

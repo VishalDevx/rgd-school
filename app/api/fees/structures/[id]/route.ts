@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
+import { money } from "@/lib/money";
 
 const toNum = (v: unknown): number => {
   const n = Number(v);
@@ -46,13 +46,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       classId: body.classId ?? undefined,
       categoryId: body.categoryId || undefined,
       examFee:
-        body.examFee != null ? new Prisma.Decimal(Number(body.examFee).toFixed(2)) : undefined,
+        body.examFee != null ? money(Number(body.examFee).toFixed(2)) : undefined,
       transportFee:
-        body.transportFee != null ? new Prisma.Decimal(Number(body.transportFee).toFixed(2)) : undefined,
+        body.transportFee != null ? money(Number(body.transportFee).toFixed(2)) : undefined,
       miscFee:
-        body.miscFee != null ? new Prisma.Decimal(Number(body.miscFee).toFixed(2)) : undefined,
-      total: new Prisma.Decimal(total.toFixed(2)),
-      monthlyFee: monthlyFee > 0 ? new Prisma.Decimal(monthlyFee.toFixed(2)) : null,
+        body.miscFee != null ? money(Number(body.miscFee).toFixed(2)) : undefined,
+      total: money(total.toFixed(2)),
+      monthlyFee: monthlyFee > 0 ? money(monthlyFee.toFixed(2)) : null,
       totalMonths: monthlyFee > 0 ? totalMonths : 12,
     },
   });

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
 import { getSupabaseClient } from "@/app/lib/supabaseClient";
 import { createAuditLog } from "@/app/lib/audit";
+import { logger } from "@/app/lib/logger";
+
+const log = logger("students-route");
 
 export const dynamic = "force-dynamic";
 
@@ -82,9 +85,15 @@ export async function POST(req: NextRequest) {
       profileImgUrl = data.publicUrl;
     }
 
-    // Transaction
-    const created = await db.$transaction(async (tx) => {
-      const user = await tx.user.create({
+    // NOTE: this used to be db.$transaction. MongoDB Atlas free tier has no
+    // replica set, so multi-document transactions are unavailable. We create in
+    // order and compensate by deleting the User and Student rows if a later step
+    // fails, so a half-enrolled student is never left behind.
+    let userId: string | null = null;
+    let studentId: string | null = null;
+    let created;
+    try {
+      const user = await db.user.create({
         data: {
           name: name!,
           email: email!.toLowerCase(),
@@ -93,13 +102,14 @@ export async function POST(req: NextRequest) {
           passwordHash,
         },
       });
+      userId = user.id;
 
       const parsedGender: Gender =
         gender && ["MALE", "FEMALE", "OTHER"].includes(gender.toUpperCase())
           ? (gender.toUpperCase() as Gender)
           : null;
 
-      const student = await tx.student.create({
+      const student = await db.student.create({
         data: {
           userId: user.id,
           admissionNo: admissionNo!,
@@ -122,9 +132,10 @@ export async function POST(req: NextRequest) {
           usesTransport,
         },
       });
+      studentId = student.id;
 
       if (usesTransport) {
-        await tx.transportAssignment.create({
+        await db.transportAssignment.create({
           data: {
             studentId: student.id,
             isActive: true,
@@ -132,8 +143,18 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return { user, student };
-    });
+      created = { user, student };
+    } catch (err) {
+      log.error("POST /students failed, rolling back", err);
+      if (studentId) {
+        await db.transportAssignment.deleteMany({ studentId }).catch(() => undefined);
+        await db.student.delete({ where: { id: studentId } }).catch(() => undefined);
+      }
+      if (userId) {
+        await db.user.delete({ where: { id: userId } }).catch(() => undefined);
+      }
+      throw err;
+    }
 
     await createAuditLog({
       userId: session.user.id,

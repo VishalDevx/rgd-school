@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
-import { ExamCategory } from "@prisma/client";
+import { ExamCategory } from "@/lib/enums";
 
 // ---------- Types ----------
 interface CreateExamBody {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOption } from "@/app/lib/auth";
 
@@ -15,7 +15,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const idCard = await db.iDCard.findUnique({
+    const idCard = await db.idCard.findUnique({
       where: { id },
       include: {
         student: {
@@ -57,7 +57,7 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const existing = await db.iDCard.findUnique({ where: { id } });
+    const existing = await db.idCard.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "ID card not found" }, { status: 404 });
     }
@@ -73,7 +73,7 @@ export async function PATCH(
     if (body.expiryDate !== undefined) data.expiryDate = body.expiryDate ? new Date(body.expiryDate) : null;
     if (body.qrData !== undefined) data.qrData = body.qrData;
 
-    const updated = await db.iDCard.update({
+    const updated = await db.idCard.update({
       where: { id },
       data,
       include: {
@@ -108,12 +108,12 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existing = await db.iDCard.findUnique({ where: { id } });
+    const existing = await db.idCard.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "ID card not found" }, { status: 404 });
     }
 
-    await db.iDCard.delete({ where: { id } });
+    await db.idCard.delete({ where: { id } });
 
     return NextResponse.json({ success: true, message: "ID card deleted" });
   } catch (error) {

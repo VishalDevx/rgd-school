@@ -1,4 +1,4 @@
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 export type FeatureKey =
   | "library"

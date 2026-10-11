@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import StudentsTable from "./StudentTables";
 import { authOption } from "@/app/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";

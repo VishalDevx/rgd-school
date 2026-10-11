@@ -1,6 +1,6 @@
 // lib/auth.ts
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { db } from "@/lib/prisma";
+import { mongooseAdapter } from "@/lib/auth-adapter";
+import { db } from "@/lib/db";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { type AuthOptions } from "next-auth";
@@ -11,7 +11,7 @@ if (!process.env.NEXTAUTH_SECRET) {
 }
 
 export const authOption: AuthOptions = {
-  adapter: PrismaAdapter(db),
+  adapter: mongooseAdapter(),
 
   session: {
     strategy: "jwt", // <- database sessions allow multiple logins in the same browser

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { TransactionType, PaymentMethod } from "@prisma/client";
+import { TransactionType, PaymentMethod } from "@/lib/enums";
 
 interface ExpenseCategory {
   id: string;

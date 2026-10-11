@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { MoreVertical } from "lucide-react";
 
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { AdminDashboard } from "@/app/components/AdminDashboard";
 import { DashBoardQuickAction } from "@/app/components/DashBoardQuickAction";
 import Link from "next/link";

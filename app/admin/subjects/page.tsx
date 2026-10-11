@@ -1,6 +1,6 @@
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card";
 import { authOption } from "@/app/lib/auth";

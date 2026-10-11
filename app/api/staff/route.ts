@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 
 import { getServerSession } from "next-auth/next";
 import { logger } from "@/app/lib/logger";
@@ -63,9 +63,15 @@ export async function POST(req: NextRequest) {
       ? body.classIds
       : [];
 
-    const result = await db.$transaction(async (tx) => {
+    // NOTE: this used to be db.$transaction. MongoDB Atlas free tier has no
+    // replica set, so multi-document transactions are unavailable. We create in
+    // order and compensate: if the Staff row fails we delete the User we just
+    // made, so a half-created staff account is never left behind.
+    let userId: string | null = null;
+    let result;
+    try {
       // ---- Create user ----
-      const user = await tx.user.create({
+      const user = await db.user.create({
         data: {
           name: String(body.name),
           email: String(body.email).toLowerCase(),
@@ -74,9 +80,10 @@ export async function POST(req: NextRequest) {
           passwordHash: String(body.passwordHash),
         },
       });
+      userId = user.id;
 
       // ---- Create staff ----
-      const staff = await tx.staff.create({
+      const staff = await db.staff.create({
         data: {
           userId: user.id,
           designation: String(body.designation),
@@ -86,15 +93,24 @@ export async function POST(req: NextRequest) {
       });
 
       // ---- Assign teacher to multiple classes ----
+      // Runs last and is non-critical: a failure here leaves the staff record
+      // intact and simply drops the class assignments.
       if (classIds.length > 0) {
-        await tx.class.updateMany({
+        await db.class.updateMany({
           where: { id: { in: classIds } },
           data: { teacherId: staff.id },
         });
       }
 
-      return { user, staff };
-    });
+      result = { user, staff };
+    } catch (err) {
+      log.error("POST /staff failed, rolling back user", err);
+      if (userId) {
+        await db.staff.deleteMany({ userId }).catch(() => undefined);
+        await db.user.delete({ where: { id: userId } }).catch(() => undefined);
+      }
+      throw err;
+    }
 
     return NextResponse.json({ success: true, data: result }, { status: 201 });
   } catch (err) {

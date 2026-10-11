@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOption } from "@/app/lib/auth";
 
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     if (studentId) where.studentId = studentId;
     if (staffId) where.staffId = staffId;
 
-    const idCards = await db.iDCard.findMany({
+    const idCards = await db.idCard.findMany({
       where,
       include: {
         student: {
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Student not found" }, { status: 404 });
       }
 
-      const existing = await db.iDCard.findUnique({
+      const existing = await db.idCard.findUnique({
         where: { studentId: body.studentId },
       });
       if (existing) {
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Staff not found" }, { status: 404 });
       }
 
-      const existing = await db.iDCard.findUnique({
+      const existing = await db.idCard.findUnique({
         where: { staffId: body.staffId },
       });
       if (existing) {
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const idCard = await db.iDCard.create({
+    const idCard = await db.idCard.create({
       data: {
         cardNo,
         studentId: body.studentId ?? null,

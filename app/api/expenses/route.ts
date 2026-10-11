@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
-import { TransactionType, PaymentMethod, Prisma } from "@prisma/client";
+import { TransactionType, PaymentMethod } from "@/lib/enums";
 import { authOption } from "@/app/lib/auth";
+import type { JsonInput } from "@/lib/types";
 
 interface CreateExpenseBody {
   title: string;
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
         categoryId: created.categoryId,
         paidTo: created.paidTo,
         paymentMode: created.paymentMode,
-      } as Prisma.InputJsonValue,
+      } as JsonInput,
     },
   });
 

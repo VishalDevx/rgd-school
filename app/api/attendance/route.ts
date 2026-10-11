@@ -1,10 +1,10 @@
 // app/api/attendance/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/prisma";
+import { db } from "@/lib/db";
 import { authOption } from "@/app/lib/auth";
 import { getServerSession } from "next-auth/next";
 import { logger } from "@/app/lib/logger";
-import type { AttendanceStatus } from "@prisma/client";
+import type { AttendanceStatus } from "@/lib/enums";
 
 const log = logger("attendance-route");
 
@@ -115,32 +115,35 @@ export async function POST(request: NextRequest) {
     const date = new Date(raw.date || new Date());
     date.setHours(0, 0, 0, 0);
 
-    const created = await db.$transaction(async (tx) => {
-      const results: typeof records = [];
+    // NOTE: this used to be db.$transaction. MongoDB Atlas free tier has no
+  // replica set, so multi-document transactions are unavailable. Every write
+  // here is an idempotent upsert keyed on (studentId, date), so a partial
+  // application is safe: the client can retry the request and converge on the
+  // same state.
+  const results: typeof records = [];
 
-      for (const record of records) {
-        const att = await tx.attendance.upsert({
-          where: {
-            studentId_date: {
-              studentId: record.studentId,
-              date,
-            },
-          },
-          update: { status: record.status },
-          create: {
-            classId: raw.classId,
-            studentId: record.studentId,
-            date,
-            status: record.status,
-            markedById: staff.id,
-          },
-        });
-
-        results.push({ studentId: att.studentId, status: att.status });
-      }
-
-      return results;
+  for (const record of records) {
+    const att = await db.attendance.upsert({
+      where: {
+        studentId_date: {
+          studentId: record.studentId,
+          date,
+        },
+      },
+      update: { status: record.status },
+      create: {
+        classId: raw.classId,
+        studentId: record.studentId,
+        date,
+        status: record.status,
+        markedById: staff.id,
+      },
     });
+
+    results.push({ studentId: att.studentId, status: att.status });
+  }
+
+  const created = results;
 
     return NextResponse.json({ success: true, data: created }, { status: 201 });
   } catch (err: unknown) {

@@ -8,7 +8,8 @@
 Set these in your Vercel project settings:
 
 ### Database
-- `DATABASE_URL` - PostgreSQL connection string (Supabase or Neon)
+- `MONGODB_URI` - MongoDB Atlas connection string, e.g.
+  `mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/rgd_school?appName=Cluster0`
 
 ### Authentication
 - `NEXTAUTH_SECRET` - Strong random secret (generate with `openssl rand -base64 32`)
@@ -43,14 +44,16 @@ Set these in your Vercel project settings:
    - Add all variables listed above in Vercel dashboard
    - Under Settings → Environment Variables
 
-4. **Run Database Migrations**
+4. **Create Collections and Indexes**
+   MongoDB has no migration step. Build the collections/indexes once by running
+   the seed (or just the index sync) against the production cluster:
    ```bash
-   # Using Vercel CLI
+   # pull the production env first
    vercel env pull .env.local
-   npx prisma migrate deploy
+   npm run seed        # wipes and reseeds all collections
    ```
-
-   Or use Vercel's database migration feature if available.
+   To only create indexes and leave existing data untouched, run a small script
+   that calls `db.syncIndexes()` (see `db.syncIndexes` in `lib/db.ts`).
 
 5. **Deploy**
    - Vercel will automatically build and deploy
@@ -59,7 +62,8 @@ Set these in your Vercel project settings:
 ## Post-Deployment
 
 1. **Verify Database Connection**
-   - Check that Prisma can connect to your database
+   - Check that the app can reach MongoDB (`MONGODB_URI` correct, Atlas IP
+     access list allows Vercel's egress — `0.0.0.0/0` or Vercel's published ranges)
 
 2. **Test Authentication**
    - Try logging in as admin/staff/student
@@ -78,12 +82,14 @@ Set these in your Vercel project settings:
 - **Node Version**: 18+ (set in `package.json` if needed)
 - **Build Command**: `npm run build` (auto-detected)
 - **Output Directory**: `.next` (auto-detected)
-- **Install Command**: `npm install` (runs `prisma generate` via postinstall)
+- **Install Command**: `npm install`
 
 ## Important Notes
 
-- Prisma Client is auto-generated on `npm install` via `postinstall` script
-- Database migrations must be run manually after first deployment
+- There is no Prisma/migration step; schemas are Mongoose models in `models/`
+- Money is stored as a double and rounded in code (`lib/money.ts`)
+- The Atlas free tier (M0) has no replica set, so multi-document transactions are
+  unavailable — multi-write routes use compensating deletes instead of `db.$transaction`
 - Image uploads require Supabase storage bucket named `rgd-school`
 - Rate limiting requires Upstash Redis (free tier available)
 
@@ -91,13 +97,14 @@ Set these in your Vercel project settings:
 
 ### Build Fails
 - Check environment variables are set correctly
-- Verify `DATABASE_URL` is accessible from Vercel
+- Verify `MONGODB_URI` is accessible from Vercel
 - Check build logs for specific errors
 
 ### Database Connection Issues
-- Verify `DATABASE_URL` is correct
-- Check if database allows connections from Vercel IPs
-- Ensure SSL is enabled if required
+- Verify `MONGODB_URI` is correct (and that the password is URL-encoded)
+- Check the Atlas IP access list allows Vercel's egress IPs
+- Confirm the database name in the URI matches your target database
+- If you see "still contains the literal <db_password>", the env var was never filled in
 
 ### Image Upload Issues
 - Verify Supabase bucket `rgd-school` exists

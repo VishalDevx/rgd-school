@@ -1,6 +1,6 @@
 "use client";
 
-import type { Student } from "@prisma/client";
+import type { StudentRow as Student } from "@/lib/types";
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {

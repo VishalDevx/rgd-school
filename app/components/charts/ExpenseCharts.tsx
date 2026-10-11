@@ -21,7 +21,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { TransactionType } from "@prisma/client";
+import { TransactionType } from "@/lib/enums";
 
 export type Expense = {
   id: string;
