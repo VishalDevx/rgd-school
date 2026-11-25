@@ -43,3 +43,6 @@ next-env.d.ts
 npm-build.log
 *.local
 
+
+# local database backups (contain student personal data)
+/backups/
