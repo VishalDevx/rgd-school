@@ -1,326 +1,179 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import Image from "next/image";
+import { useRef, useState } from "react";
+import { Download, Printer } from "lucide-react";
+import { Button } from "@/app/components/ui/button";
+import { useStatement } from "@/app/components/fees/FeeStatementView";
+import { fmtDate, inr, modeLabel } from "@/app/components/fees/ui";
 
-interface FeeSlipRow {
-  structureId: string;
-  structureName: string;
-  examFee: number;
-  transportFee: number;
-  miscFee: number;
-  monthlyFee: number | null;
-  totalMonths: number;
-  totalFee: number;
-  adjustedTotal: number;
-  totalPaid: number;
-  remainAmount: number;
-  status: string;
-  payments: Array<{
-    id: string;
-    amountPaid: number;
-    paymentDate: string | null;
-    status: string;
-  }>;
-}
-
-interface FeeSlipData {
-  school: {
-    name: string;
-    address: string | null;
-    contactEmail: string | null;
-    contactPhone: string | null;
-    logoUrl: string | null;
-  } | null;
-  student: {
-    id: string;
-    name: string;
-    email: string;
-    phone: string | null;
-    admissionNo: string;
-    rollNumber: string;
-    className: string;
-    fatherName: string | null;
-    usesTransport: boolean;
-    transport: {
-      routeName: string | null;
-      stopName: string | null;
-      busNumber: string | null;
-    } | null;
-  };
-  feeSlip: FeeSlipRow[];
-  summary: {
-    grandTotal: number;
-    grandPaid: number;
-    grandRemaining: number;
-  };
-}
-
-function fmtDate(v?: string | null) {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString();
-}
-
+/** Printable consolidated fee statement for one student. */
 export function FeeSlipClient({ studentId }: { studentId: string }) {
-  const [data, setData] = useState<FeeSlipData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error, loading } = useStatement(studentId);
   const slipRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!studentId) return;
-    setLoading(true);
-    fetch(`/api/fees/slip?studentId=${studentId}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to fetch fee slip");
-        return res.json();
-      })
-      .then(setData)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed"))
-      .finally(() => setLoading(false));
-  }, [studentId]);
+  const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {
     if (!slipRef.current || !data) return;
-
-    const canvas = await html2canvas(slipRef.current, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-    });
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-    if (pdfHeight > pdf.internal.pageSize.getHeight()) {
+    setDownloading(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const canvas = await html2canvas(slipRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const img = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const width = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
-      let heightLeft = pdfHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft > 0) {
-        position -= pageHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
+      const height = (canvas.height * width) / canvas.width;
+      // Long statements flow onto extra pages.
+      for (let offset = 0; offset < height; offset += pageHeight) {
+        if (offset > 0) pdf.addPage();
+        pdf.addImage(img, "PNG", 0, -offset, width, height);
       }
-    } else {
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${data.student.name.replace(/\s+/g, "_")}_Fee_Statement.pdf`);
+    } finally {
+      setDownloading(false);
     }
-
-    const safeName = data.student.name.replaceAll(/\s+/g, "_");
-    pdf.save(`${safeName}_Fee_Statement.pdf`);
   };
 
-  if (loading) return <div className="py-12 text-center text-gray-500">Loading fee slip…</div>;
-  if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
-  if (!data) return null;
+  if (loading) return <div className="mx-auto h-[700px] max-w-4xl animate-pulse rounded-xl bg-white" />;
+  if (error || !data) {
+    return (
+      <div className="mx-auto max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
+        {error ?? "Could not load the fee statement"}
+      </div>
+    );
+  }
 
-  const schoolName = data.school?.name ?? "School";
+  const { school, student, accounts, summary } = data;
+  const receipts = accounts
+    .flatMap((a) => a.receipts.filter((r) => !r.voided).map((r) => ({ ...r, fee: a.structureName })))
+    .sort((a, b) => a.paymentDate.localeCompare(b.paymentDate));
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 bg-gray-100">
-      <div className="flex items-center justify-end gap-3 mb-4">
-        <button
-          onClick={() => window.print()}
-          className="rounded-md border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
-        >
-          Print
-        </button>
-        <button
-          onClick={handleDownload}
-          className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
-        >
-          Download Fee Statement PDF
-        </button>
+    <div className="mx-auto max-w-4xl space-y-4">
+      <div className="flex justify-end gap-2 print:hidden">
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer className="mr-1.5 h-4 w-4" /> Print
+        </Button>
+        <Button size="sm" onClick={handleDownload} disabled={downloading}>
+          <Download className="mr-1.5 h-4 w-4" /> {downloading ? "Preparing…" : "Download PDF"}
+        </Button>
       </div>
 
-      <div ref={slipRef} className="bg-white p-8 md:p-10 text-gray-900">
-        {/* Header */}
-        <div className="flex items-start gap-4 border-b pb-6 mb-6">
-          {data.school?.logoUrl ? (
-            <div className="relative h-14 w-14 shrink-0">
-              <Image
-                src={data.school.logoUrl}
-                alt={`${schoolName} logo`}
-                fill
-                className="object-contain"
-                sizes="56px"
-                priority
-              />
-            </div>
+      <div ref={slipRef} className="rounded-xl border border-gray-200 bg-white p-8 text-gray-900 shadow-sm print:border-0 print:shadow-none md:p-10">
+        <div className="flex items-start gap-4 border-b-2 border-gray-900 pb-5">
+          {school?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- html2canvas needs a plain <img>
+            <img src={school.logoUrl} alt="" crossOrigin="anonymous" className="h-16 w-16 object-contain" />
           ) : null}
           <div className="flex-1">
-            <h1 className="text-2xl font-extrabold tracking-wide">{schoolName}</h1>
-            {data.school?.address ? (
-              <p className="text-sm text-gray-700 mt-1">{data.school.address}</p>
-            ) : null}
-            <p className="text-xs text-gray-600 mt-2">Consolidated Fee Statement</p>
+            <h1 className="text-2xl font-bold tracking-tight">{school?.name ?? "School"}</h1>
+            {school?.address ? <p className="mt-0.5 text-sm text-gray-600">{school.address}</p> : null}
           </div>
-          <div className="text-right text-xs text-gray-600">
-            <div>Date: {new Date().toLocaleDateString()}</div>
-            <div>Admission No: {data.student.admissionNo}</div>
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Fee Statement</p>
+            <p className="mt-1 text-sm text-gray-600">As on {fmtDate(new Date())}</p>
           </div>
         </div>
 
-        {/* Student Info */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-6">
-          <div className="border px-3 py-2">
-            <p className="text-xs uppercase tracking-widest text-gray-600">Student Name</p>
-            <p className="font-semibold mt-0.5">{data.student.name}</p>
-          </div>
-          <div className="border px-3 py-2">
-            <p className="text-xs uppercase tracking-widest text-gray-600">Class</p>
-            <p className="font-semibold mt-0.5">{data.student.className}</p>
-          </div>
-          <div className="border px-3 py-2">
-            <p className="text-xs uppercase tracking-widest text-gray-600">Roll No</p>
-            <p className="font-semibold mt-0.5">{data.student.rollNumber}</p>
-          </div>
-          <div className="border px-3 py-2">
-            <p className="text-xs uppercase tracking-widest text-gray-600">Father Name</p>
-            <p className="font-semibold mt-0.5">{data.student.fatherName ?? "—"}</p>
-          </div>
-        </div>
+        <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 text-sm md:grid-cols-4">
+          <Field label="Student" value={student.name} />
+          <Field label="Admission no." value={student.admissionNo} />
+          <Field label="Class / Roll" value={`${student.className || "—"} / ${student.rollNumber}`} />
+          <Field label="Father's name" value={student.fatherName ?? "—"} />
+        </dl>
 
-        {/* Transport Info */}
-        {data.student.transport && (
-          <div className="bg-blue-50 border border-blue-200 rounded-md px-4 py-2 mb-6 text-sm">
-            <p className="font-semibold text-blue-800">Transport Details</p>
-            <div className="grid grid-cols-3 gap-2 mt-1 text-blue-700">
-              {data.student.transport.routeName && <span>Route: {data.student.transport.routeName}</span>}
-              {data.student.transport.stopName && <span>Stop: {data.student.transport.stopName}</span>}
-              {data.student.transport.busNumber && <span>Bus: {data.student.transport.busNumber}</span>}
-            </div>
-          </div>
-        )}
-
-        {/* Fee Table */}
-        <div className="overflow-x-auto mb-6">
-          <table className="w-full min-w-[700px] border text-sm">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border px-3 py-2 text-left font-semibold">Fee Structure</th>
-                <th className="border px-3 py-2 text-right font-semibold">Monthly</th>
-                <th className="border px-3 py-2 text-right font-semibold">Exam</th>
-                <th className="border px-3 py-2 text-right font-semibold">Transport</th>
-                <th className="border px-3 py-2 text-right font-semibold">Misc</th>
-                <th className="border px-3 py-2 text-right font-semibold">Total</th>
-                <th className="border px-3 py-2 text-right font-semibold">Paid</th>
-                <th className="border px-3 py-2 text-right font-semibold">Balance</th>
+        <table className="mt-6 w-full text-sm">
+          <thead>
+            <tr className="border-y border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+              <th className="px-3 py-2 font-medium">Fee</th>
+              <th className="px-3 py-2 font-medium">Session</th>
+              <th className="px-3 py-2 font-medium">Due</th>
+              <th className="px-3 py-2 text-right font-medium">Payable</th>
+              <th className="px-3 py-2 text-right font-medium">Paid</th>
+              <th className="px-3 py-2 text-right font-medium">Balance</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 tabular-nums">
+            {accounts.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-6 text-center text-gray-500">No fees assigned.</td>
               </tr>
-            </thead>
-            <tbody>
-              {data.feeSlip.map((row) => (
-                <tr key={row.structureId}>
-                  <td className="border px-3 py-2 font-medium">{row.structureName}</td>
-                  <td className="border px-3 py-2 text-right">
-                    {row.monthlyFee ? `₹${row.monthlyFee}/mo×${row.totalMonths}` : "—"}
+            ) : (
+              accounts.map((a) => (
+                <tr key={a.accountId}>
+                  <td className="px-3 py-2.5">
+                    <span className="font-medium">{a.structureName}</span>
+                    <span className="block text-xs text-gray-500">
+                      {[
+                        a.breakdown.tuition ? `Tuition ${inr(a.breakdown.tuition)}` : null,
+                        a.breakdown.exam ? `Exam ${inr(a.breakdown.exam)}` : null,
+                        a.breakdown.misc ? `Misc ${inr(a.breakdown.misc)}` : null,
+                        a.breakdown.transport && a.includesTransport ? `Transport ${inr(a.breakdown.transport)}` : null,
+                        a.balance.discount ? `Concession −${inr(a.balance.discount)}` : null,
+                        a.balance.lateFine ? `Late fine +${inr(a.balance.lateFine)}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
                   </td>
-                  <td className="border px-3 py-2 text-right">₹{row.examFee.toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right">₹{row.transportFee.toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right">₹{row.miscFee.toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right font-semibold">₹{row.adjustedTotal.toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right text-green-600">₹{row.totalPaid.toLocaleString()}</td>
-                  <td className="border px-3 py-2 text-right text-red-600 font-semibold">
-                    ₹{row.remainAmount.toLocaleString()}
-                  </td>
+                  <td className="px-3 py-2.5">{a.session?.name ?? "—"}</td>
+                  <td className={`px-3 py-2.5 ${a.isOverdue ? "font-medium text-red-600" : ""}`}>{fmtDate(a.dueDate)}</td>
+                  <td className="px-3 py-2.5 text-right">{inr(a.balance.netPayable)}</td>
+                  <td className="px-3 py-2.5 text-right">{inr(a.balance.amountPaid)}</td>
+                  <td className="px-3 py-2.5 text-right font-medium">{inr(a.balance.remainAmount)}</td>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="bg-gray-50 font-bold">
-                <td className="border px-3 py-2">Grand Total</td>
-                <td colSpan={5}></td>
-                <td className="border px-3 py-2 text-right">₹{data.summary.grandTotal.toLocaleString()}</td>
-                <td className="border px-3 py-2 text-right text-green-600">₹{data.summary.grandPaid.toLocaleString()}</td>
-                <td className="border px-3 py-2 text-right text-red-600">
-                  ₹{data.summary.grandRemaining.toLocaleString()}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-900 font-semibold tabular-nums">
+              <td className="px-3 py-3" colSpan={3}>Total</td>
+              <td className="px-3 py-3 text-right">{inr(summary.totalPayable)}</td>
+              <td className="px-3 py-3 text-right">{inr(summary.totalPaid)}</td>
+              <td className="px-3 py-3 text-right">{inr(summary.totalRemaining)}</td>
+            </tr>
+          </tfoot>
+        </table>
 
-        {/* Payment History */}
-        {data.feeSlip.some((r) => r.payments.length > 0) && (
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-600 mb-2">Payment History</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border px-3 py-1.5 text-left font-semibold">Date</th>
-                    <th className="border px-3 py-1.5 text-left font-semibold">Structure</th>
-                    <th className="border px-3 py-1.5 text-right font-semibold">Amount</th>
-                    <th className="border px-3 py-1.5 text-center font-semibold">Status</th>
+        {receipts.length > 0 ? (
+          <>
+            <h2 className="mt-8 text-xs font-semibold uppercase tracking-wide text-gray-500">Payment history</h2>
+            <table className="mt-2 w-full text-sm">
+              <tbody className="divide-y divide-gray-100 tabular-nums">
+                {receipts.map((r) => (
+                  <tr key={r.id}>
+                    <td className="py-2 pr-3 font-mono text-xs">{r.receiptNo}</td>
+                    <td className="px-3 py-2">{fmtDate(r.paymentDate)}</td>
+                    <td className="px-3 py-2">{r.fee}</td>
+                    <td className="px-3 py-2">{modeLabel(r.paymentMode)}</td>
+                    <td className="py-2 pl-3 text-right">{inr(r.amount)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {data.feeSlip.map((row) =>
-                    row.payments.map((p) => (
-                      <tr key={p.id}>
-                        <td className="border px-3 py-1.5">{fmtDate(p.paymentDate)}</td>
-                        <td className="border px-3 py-1.5">{row.structureName}</td>
-                        <td className="border px-3 py-1.5 text-right">₹{p.amountPaid.toLocaleString()}</td>
-                        <td className="border px-3 py-1.5 text-center">
-                          <span
-                            className={`text-xs font-semibold px-2 py-0.5 rounded ${
-                              p.status === "PAID"
-                                ? "bg-green-100 text-green-700"
-                                : p.status === "PARTIAL"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {p.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                ))}
+              </tbody>
+            </table>
+          </>
+        ) : null}
 
-        {/* Summary Bar */}
-        <div className="grid grid-cols-3 gap-4 text-sm mt-8">
-          <div className="border border-green-500 rounded px-3 py-2 text-center">
-            <p className="text-xs uppercase tracking-widest text-gray-600">Total Paid</p>
-            <p className="text-lg font-bold text-green-600">₹{data.summary.grandPaid.toLocaleString()}</p>
-          </div>
-          <div className="border border-red-500 rounded px-3 py-2 text-center">
-            <p className="text-xs uppercase tracking-widest text-gray-600">Total Due</p>
-            <p className="text-lg font-bold text-red-600">₹{data.summary.grandRemaining.toLocaleString()}</p>
-          </div>
-          <div className="border border-blue-500 rounded px-3 py-2 text-center">
-            <p className="text-xs uppercase tracking-widest text-gray-600">Total Fee</p>
-            <p className="text-lg font-bold">₹{data.summary.grandTotal.toLocaleString()}</p>
-          </div>
-        </div>
-
-        {/* Signatures */}
-        <div className="mt-10 grid grid-cols-2 gap-10 text-sm">
+        <div className="mt-12 grid grid-cols-2 gap-10 text-sm">
           <div>
-            <div className="h-12 border-b mb-2" />
-            <p className="text-xs uppercase tracking-widest text-gray-600">Parent/Guardian</p>
+            <div className="mb-1 h-10 border-b border-gray-400" />
+            <p className="text-xs uppercase tracking-wide text-gray-500">Parent / Guardian</p>
           </div>
           <div>
-            <div className="h-12 border-b mb-2" />
-            <p className="text-xs uppercase tracking-widest text-gray-600">Authorized Signatory</p>
+            <div className="mb-1 h-10 border-b border-gray-400" />
+            <p className="text-xs uppercase tracking-wide text-gray-500">Authorised signatory</p>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs uppercase tracking-wide text-gray-500">{label}</dt>
+      <dd className="mt-0.5 font-medium">{value}</dd>
     </div>
   );
 }

@@ -130,15 +130,15 @@ async function main() {
     await db.idCard.create({ data: { studentId: sid2, cardNo: "C-2" } });
     await db.idCard.create({ data: { staffId: staff.id, cardNo: "C-3" } });
     ok("multiple ID cards with null staffId", true, "(no null collision)");
-  } catch (e: any) {
-    ok("multiple ID cards with null staffId", false, e.message?.slice(0, 80));
+  } catch (e) {
+    ok("multiple ID cards with null staffId", false, (e as Error).message?.slice(0, 80));
   }
   try {
     await db.feePayment.create({ data: { studentId: sid2, feeStructureId: (await db.feeStructure.findFirst()).id, amountPaid: 0, remainAmount: 0 } });
     await db.feePayment.create({ data: { studentId: sid3, feeStructureId: (await db.feeStructure.findFirst()).id, amountPaid: 0, remainAmount: 0 } });
     ok("multiple fee payments with null razorpayOrder", true, "(no null collision)");
-  } catch (e: any) {
-    ok("multiple fee payments with null razorpayOrder", false, e.message?.slice(0, 80));
+  } catch (e) {
+    ok("multiple fee payments with null razorpayOrder", false, (e as Error).message?.slice(0, 80));
   }
 
   console.log("\npartial unique index: Student(classId, rollNumber)");
@@ -146,8 +146,8 @@ async function main() {
     await mkStudent("ADM-D1", "01");
     await mkStudent("ADM-D2", "01");
     ok("unassigned students can share rollNumber", true, "(no null collision on classId)");
-  } catch (e: any) {
-    ok("unassigned students can share rollNumber", false, e.message?.slice(0, 90));
+  } catch (e) {
+    ok("unassigned students can share rollNumber", false, (e as Error).message?.slice(0, 90));
   }
   try {
     const u = await db.user.create({
@@ -159,8 +159,8 @@ async function main() {
     await db.student.create({ data: { userId: u.id, admissionNo: "ADM-C1", rollNumber: "77", classId: cls.id } });
     await db.student.create({ data: { userId: u2.id, admissionNo: "ADM-C2", rollNumber: "77", classId: cls.id } });
     ok("same class + rollNumber IS rejected", false, "duplicate was accepted");
-  } catch (e: any) {
-    ok("same class + rollNumber IS rejected", true, `code=${e.code}`);
+  } catch (e) {
+    ok("same class + rollNumber IS rejected", true, `code=${(e as { code?: unknown }).code}`);
   }
 
   console.log("\nenums / dates / money round-trip");

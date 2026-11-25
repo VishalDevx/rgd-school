@@ -1,7 +1,7 @@
 import { db } from "@/lib/db"
 
 async function fixPasswords() {
-  const users = await db.user.findMany()
+  const users = await db.user.findMany({ select: { email: true, passwordHash: true } })
   for (const u of users) {
    
     if (!u.passwordHash || !u.passwordHash.startsWith("$2")) {

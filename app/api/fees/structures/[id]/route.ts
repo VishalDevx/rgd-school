@@ -1,72 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { getServerSession } from "next-auth/next";
-import { authOption } from "@/app/lib/auth";
-import { money } from "@/lib/money";
+import { requireRole } from "@/app/lib/apiAuth";
+import { createAuditLog } from "@/app/lib/audit";
+import { deleteStructure, updateStructure } from "@/lib/fees/service";
+import { feeStructureInput, firstIssue } from "@/lib/fees/validation";
+import { feeErrorResponse } from "@/lib/fees/http";
 
-const toNum = (v: unknown): number => {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
-};
+type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: NextRequest, { params }: Ctx) {
+  const auth = await requireRole("ADMIN", "STAFF");
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
-  const item = await db.feeStructure.findUnique({
-    where: { id },
-    include: { class: true },
-  });
+  const item = await db.feeStructure.findUnique({ where: { id }, include: { class: true } }).catch(() => null);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(item);
 }
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOption);
+export async function PATCH(req: NextRequest, { params }: Ctx) {
+  const auth = await requireRole("ADMIN");
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const parsed = feeStructureInput.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: firstIssue(parsed.error) }, { status: 400 });
+
+  try {
+    const result = await updateStructure(id, parsed.data);
+    await createAuditLog({
+      userId: auth.session.user.id,
+      action: "UPDATE",
+      entity: "FEE_STRUCTURE",
+      entityId: id,
+      newValue: parsed.data,
+    });
+    return NextResponse.json(result);
+  } catch (err) {
+    return feeErrorResponse(err, "update structure");
   }
-
-  const body = await req.json().catch(() => null);
-  if (!body) return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
-
-  const monthlyFee = toNum(body.monthlyFee);
-  const totalMonths = body.totalMonths != null ? toNum(body.totalMonths) : 12;
-
-  let total: number;
-  if (monthlyFee > 0) {
-    total = monthlyFee * totalMonths;
-  } else {
-    total = toNum(body.examFee) + toNum(body.transportFee) + toNum(body.miscFee);
-  }
-
-  const updated = await db.feeStructure.update({
-    where: { id },
-    data: {
-      name: body.name ?? undefined,
-      classId: body.classId ?? undefined,
-      categoryId: body.categoryId || undefined,
-      examFee:
-        body.examFee != null ? money(Number(body.examFee).toFixed(2)) : undefined,
-      transportFee:
-        body.transportFee != null ? money(Number(body.transportFee).toFixed(2)) : undefined,
-      miscFee:
-        body.miscFee != null ? money(Number(body.miscFee).toFixed(2)) : undefined,
-      total: money(total.toFixed(2)),
-      monthlyFee: monthlyFee > 0 ? money(monthlyFee.toFixed(2)) : null,
-      totalMonths: monthlyFee > 0 ? totalMonths : 12,
-    },
-  });
-
-  return NextResponse.json(updated);
 }
 
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const session = await getServerSession(authOption);
-  if (!session?.user || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function DELETE(_req: NextRequest, { params }: Ctx) {
+  const auth = await requireRole("ADMIN");
+  if (!auth.ok) return auth.response;
 
-  await db.feeStructure.delete({ where: { id } });
-  return NextResponse.json({ success: true }, { status: 204 });
+  const { id } = await params;
+  try {
+    await deleteStructure(id);
+    await createAuditLog({ userId: auth.session.user.id, action: "DELETE", entity: "FEE_STRUCTURE", entityId: id });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return feeErrorResponse(err, "delete structure");
+  }
 }

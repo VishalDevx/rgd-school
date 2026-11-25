@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncStudentSafely } from "@/lib/fees/service";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -81,6 +82,15 @@ export async function PATCH(
       },
     });
 
+    // Keep the student's transport flag (and transport fee) in step.
+    if (typeof body.isActive === "boolean" && body.isActive !== existing.isActive) {
+      await db.student.update({
+        where: { id: existing.studentId },
+        data: { usesTransport: body.isActive },
+      });
+      await syncStudentSafely(existing.studentId);
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     console.error("PATCH /api/transport/[id] failed:", error);
@@ -111,6 +121,7 @@ export async function DELETE(
     });
 
     await db.transportAssignment.delete({ where: { id } });
+    await syncStudentSafely(existing.studentId);
 
     return NextResponse.json({ success: true, message: "Transport assignment deleted" });
   } catch (error) {

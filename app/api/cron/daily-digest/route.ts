@@ -24,9 +24,10 @@ export async function POST(req: NextRequest) {
     ] = await Promise.all([
       db.student.count({ where: { admissionDate: { gte: todayStart, lt: todayEnd } } }),
       db.attendance.count({ where: { date: { gte: todayStart, lt: todayEnd } } }),
-      db.feePayment.aggregate({
-        _sum: { amountPaid: true },
-        where: { createdAt: { gte: todayStart, lt: todayEnd }, status: "PAID" },
+      // Every receipt counts, not only accounts that became fully PAID.
+      db.feeTransaction.aggregate({
+        _sum: { amount: true },
+        where: { paymentDate: { gte: todayStart, lt: todayEnd }, voided: false },
       }),
       db.student.count({ where: { active: true } }),
       db.staff.count({ where: { active: true } }),
@@ -34,9 +35,9 @@ export async function POST(req: NextRequest) {
       db.leave.count({ where: { createdAt: { gte: todayStart, lt: todayEnd } } }),
     ]);
 
-    const monthlyFeeCollection = await db.feePayment.aggregate({
-      _sum: { amountPaid: true },
-      where: { createdAt: { gte: monthStart }, status: "PAID" },
+    const monthlyFeeCollection = await db.feeTransaction.aggregate({
+      _sum: { amount: true },
+      where: { paymentDate: { gte: monthStart }, voided: false },
     });
 
     const dateStr = now.toLocaleDateString("en-IN", {
@@ -49,8 +50,8 @@ export async function POST(req: NextRequest) {
       `👨‍🎓 Students: ${totalActiveStudents} active (${newAdmissions} new today)`,
       `👨‍🏫 Staff: ${totalActiveStaff} active`,
       `📋 Attendance: ${attendanceTodayCount} records marked today`,
-      `💰 Fees Collected Today: ₹${Number(feesCollectedToday._sum.amountPaid ?? 0).toLocaleString()}`,
-      `📈 Monthly Collection: ₹${Number(monthlyFeeCollection._sum.amountPaid ?? 0).toLocaleString()}`,
+      `💰 Fees Collected Today: ₹${Number(feesCollectedToday._sum.amount ?? 0).toLocaleString()}`,
+      `📈 Monthly Collection: ₹${Number(monthlyFeeCollection._sum.amount ?? 0).toLocaleString()}`,
       `⚠️ Pending Fees: ${pendingFeeCount} payments`,
       `📝 New Leave Requests: ${newLeaves}`,
     ].join("\n");
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
       stats: {
         newAdmissions,
         attendanceToday: attendanceTodayCount,
-        feesCollected: Number(feesCollectedToday._sum.amountPaid ?? 0),
+        feesCollected: Number(feesCollectedToday._sum.amount ?? 0),
         totalActiveStudents,
         totalActiveStaff,
         pendingFeeCount,

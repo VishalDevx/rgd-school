@@ -75,6 +75,7 @@ console.log("\ncompound unique keys");
 function compounds(modelName: string): string[] {
   // Exercise the Repository's real derivation rather than a reimplementation.
   const repo = new Repository(mongoose.model(modelName), modelName);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reaching a private method on purpose
   return Object.keys((repo as any).compoundKeyMap()).sort();
 }
 // Attendance has TWO compound indexes: the unique (studentId, date) and the
@@ -90,6 +91,7 @@ eq("ExamDateSheet compound keys", compounds("ExamDateSheet"), ["examId_subjectId
 
 console.log("\ncompound key expansion");
 const attRepo = new Repository(mongoose.model("Attendance"), "Attendance");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- reaching a private method on purpose
 const expanded = (attRepo as any).expandCompoundKeys({
   studentId_date: { studentId: "s1", date: new Date(0) },
 });

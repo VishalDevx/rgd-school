@@ -12,7 +12,9 @@ import { Role } from "@/lib/enums";
 const UserSchema = new Schema(
   {
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    passwordHash: { type: String },
+    // Never returned by default (find, populate, findOneAndUpdate). Code that
+    // needs it, i.e. login, must ask for it with `select: { passwordHash: true }`.
+    passwordHash: { type: String, select: false },
     name: { type: String, required: true },
     role: { type: String, required: true, enum: Object.values(Role), default: Role.STUDENT },
     // Sparse: most students/parents have no phone, and a non-sparse unique

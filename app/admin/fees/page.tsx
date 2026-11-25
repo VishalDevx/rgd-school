@@ -1,186 +1,156 @@
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { AlertTriangle, ArrowRight, CalendarDays, HandCoins, Percent, Wallet } from "lucide-react";
 import { authOption } from "@/app/lib/auth";
-import { db } from "@/lib/db";
-
+import { getFeeOverview } from "@/lib/fees/service";
 import { Button } from "@/app/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
+import { CollectionTrendChart } from "@/app/components/fees/CollectionTrendChart";
+import { RecalculateButton } from "@/app/components/fees/RecalculateButton";
+import { EmptyState, PageHeader, PaidBar, StatTile, fmtDate, inr, modeLabel } from "@/app/components/fees/ui";
 
-import { PaymentsTrendChart } from "@/app/components/charts/payments-trend-chart";
-import { FeeStatusChart } from "@/app/components/charts/fee-status-chart";
-import RecentPaymentsTable from "@/app/components/RecentPaymentsTable";
-
-type FeeStructureRaw = {
-  id: string;
-  name: string | null;
-  amount: number;
-  examFee: number | null;
-  transportFee: number | null;
-  miscFee: number | null;
-  total: number;
-  isOptional: boolean;
-  categoryId: string | null;
-  dueDate: Date | null;
-  class: { id: string; name: string } | null;
-};
-
-type FeePaymentRaw = {
-  id: string;
-  createdAt: Date;
-  status: "PAID" | "PARTIAL" | "PENDING";
-  amountPaid: number;
-  remainAmount: number;
-  student: { id: string; user: { name: string; email: string } };
-  feeStructure: { id: string; name: string | null };
-};
-
-interface PaymentRecord {
-  id: string;
-  createdAt: Date;
-  status: "PAID" | "PARTIAL" | "UNPAID";
-  amountPaid: number;
-  studentName: string;
-  studentEmail: string;
-  feeStructureName: string | null;
-}
-
-function toNumber(value: number | string | null): number {
-  if (value === null || value === undefined) return 0;
-  return typeof value === "number" ? value : Number(value);
-}
-
-function normalizePayment(raw: FeePaymentRaw): PaymentRecord {
-  const s = raw.status;
-  return {
-    id: raw.id,
-    createdAt: raw.createdAt,
-    status: s === "PENDING" ? "UNPAID" : s,
-    amountPaid: toNumber(raw.amountPaid),
-    studentName: raw.student.user.name,
-    studentEmail: raw.student.user.email,
-    feeStructureName: raw.feeStructure.name,
-  };
-}
+export const dynamic = "force-dynamic";
 
 export default async function AdminFeesPage() {
   const session = await getServerSession(authOption);
   if (!session?.user || session.user.role !== "ADMIN") redirect("/login");
 
-  const structuresRaw = await db.feeStructure.findMany({
-    include: { class: true },
-    orderBy: { createdAt: "desc" },
-  }) as unknown as FeeStructureRaw[];
-
-  const allPaymentsRaw = await db.feePayment.findMany({
-    include: { student: { include: { user: true } }, feeStructure: true },
-    orderBy: { createdAt: "desc" },
-  }) as unknown as FeePaymentRaw[];
-
-  const allPayments = allPaymentsRaw.map(normalizePayment);
-  const recentPayments = allPayments.slice(0, 5);
-
-  const totalPaidFull = allPayments
-    .filter(p => p.status === "PAID")
-    .reduce((sum, p) => sum + p.amountPaid, 0);
-
-  const totalPartial = allPayments
-    .filter(p => p.status === "PARTIAL")
-    .reduce((sum, p) => sum + p.amountPaid, 0);
-
-  const totalPaid = totalPaidFull + totalPartial;
-  const totalStudents = new Set(allPaymentsRaw.map(p => p.student.user.name)).size;
-  const totalStructures = structuresRaw.length;
+  const o = await getFeeOverview();
+  const totalAccounts = o.accounts.paid + o.accounts.partial + o.accounts.pending;
 
   return (
-    <div className="min-h-screen p-6 md:p-8 space-y-6">
-      <div className="flex flex-col md:flex-row items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-800">Fee Management</h1>
-          <p className="text-sm text-muted-foreground">
-            Oversee fee structures, track payments, and view analytics.
-          </p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Button asChild variant="outline"><Link href="/admin/fees/structures">All Structures</Link></Button>
-          <Button asChild><Link href="/admin/fees/structures/new">New Structure</Link></Button>
-          <Button asChild variant="outline"><Link href="/admin/fees/payments/new">Record Payment</Link></Button>
-        </div>
+    <div className="mx-auto max-w-7xl space-y-6">
+      <PageHeader
+        title="Fees"
+        description="Collections, outstanding balances and recent receipts at a glance."
+        actions={
+          <>
+            <RecalculateButton />
+            <Button asChild variant="outline">
+              <Link href="/admin/fees/structures">Structures</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/fees/payments/new">
+                <HandCoins className="mr-2 h-4 w-4" /> Collect fee
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatTile label="Collected (all time)" value={inr(o.collected)} hint={`${o.receipts} receipts`}
+          icon={<Wallet className="h-4 w-4" />} tone="green" />
+        <StatTile label="This month" value={inr(o.collectedThisMonth)} hint={`${o.receiptsThisMonth} receipts`}
+          icon={<CalendarDays className="h-4 w-4" />} tone="blue" />
+        <StatTile label="Outstanding" value={inr(o.outstanding)}
+          hint={o.concessions > 0 ? `after ${inr(o.concessions)} in concessions` : `${o.accounts.pending + o.accounts.partial} open accounts`}
+          icon={<Percent className="h-4 w-4" />} tone="amber" />
+        <StatTile label="Overdue" value={inr(o.overdue)}
+          hint={o.overdueStudents ? `${o.overdueStudents} student${o.overdueStudents === 1 ? "" : "s"} past due` : "nothing overdue"}
+          icon={<AlertTriangle className="h-4 w-4" />} tone={o.overdue > 0 ? "red" : "slate"} />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="shadow-xl rounded-xl">
-          <CardHeader><CardTitle className="text-sm font-medium">Total Collected</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{totalPaid.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Across all structures</p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-xl rounded-xl">
-          <CardHeader><CardTitle className="text-sm font-medium">Total Students</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalStudents}</div>
-            <p className="text-xs text-muted-foreground">With payments</p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-xl rounded-xl">
-          <CardHeader><CardTitle className="text-sm font-medium">Fee Structures</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalStructures}</div>
-            <p className="text-xs text-muted-foreground">Active structures</p>
-          </CardContent>
-        </Card>
-        <Card className="shadow-xl rounded-xl">
-          <CardHeader><CardTitle className="text-sm font-medium">Total Transactions</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{allPaymentsRaw.length}</div>
-            <p className="text-xs text-muted-foreground">All time</p>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm lg:col-span-2">
+          <h2 className="font-semibold text-gray-900">Monthly collection</h2>
+          <p className="text-sm text-gray-500">Last 6 months, voided receipts excluded</p>
+          <div className="mt-4">
+            <CollectionTrendChart data={o.trend} />
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="font-semibold text-gray-900">Collection rate</h2>
+          <p className="text-sm text-gray-500">Paid out of everything billed</p>
+          <p className="mt-4 text-4xl font-semibold tabular-nums tracking-tight text-gray-900">{o.collectionRate}%</p>
+          <PaidBar className="mt-3 h-2" paid={o.collectionRate} payable={100} />
+          <dl className="mt-6 space-y-3 text-sm">
+            {[
+              { label: "Fully paid", value: o.accounts.paid, dot: "bg-emerald-500" },
+              { label: "Part paid", value: o.accounts.partial, dot: "bg-amber-500" },
+              { label: "Not started", value: o.accounts.pending, dot: "bg-slate-400" },
+            ].map((r) => (
+              <div key={r.label} className="flex items-center justify-between">
+                <dt className="flex items-center gap-2 text-gray-600">
+                  <span className={`h-2 w-2 rounded-full ${r.dot}`} aria-hidden /> {r.label}
+                </dt>
+                <dd className="tabular-nums text-gray-900">
+                  {r.value}
+                  <span className="text-gray-400"> / {totalAccounts}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <Button asChild variant="ghost" size="sm" className="mt-4 px-0 text-blue-600 hover:bg-transparent">
+            <Link href="/admin/fees/dues">See who owes <ArrowRight className="ml-1 h-4 w-4" /></Link>
+          </Button>
+        </section>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="shadow-xl rounded-xl">
-          <CardHeader>
-            <CardTitle>Fee Status Overview</CardTitle>
-            <CardDescription>Paid vs Partial vs Pending</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FeeStatusChart
-              paid={totalPaidFull}
-              partial={totalPartial}
-              outstanding={allPaymentsRaw.reduce((sum, p) => sum + toNumber(p.remainAmount), 0)}
-            />
-          </CardContent>
-        </Card>
-        <Card className="shadow-xl rounded-xl h-full">
-          <CardHeader>
-            <CardTitle>Recent Payment Trends</CardTitle>
-            <CardDescription>Last 5 transactions</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PaymentsTrendChart payments={recentPayments.map(p => ({
-              id: p.id,
-              amountPaid: p.amountPaid,
-              createdAt: p.createdAt,
-              status: p.status === "UNPAID" ? ("PENDING" as const) : p.status,
-              studentName: p.studentName,
-            }))} />
-          </CardContent>
-        </Card>
-      </div>
+        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <header className="border-b border-gray-100 px-5 py-3">
+            <h2 className="font-semibold text-gray-900">By class</h2>
+          </header>
+          {o.byClass.length === 0 ? (
+            <EmptyState title="No fee structures yet">
+              <Link href="/admin/fees/structures/new" className="text-blue-600 hover:underline">Create one</Link> to start billing.
+            </EmptyState>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50/70 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th className="px-5 py-2.5 font-medium">Class</th>
+                  <th className="px-5 py-2.5 font-medium">Collected</th>
+                  <th className="px-5 py-2.5 text-right font-medium">Outstanding</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {o.byClass.map((c) => (
+                  <tr key={c.classId}>
+                    <td className="px-5 py-3 font-medium text-gray-900">{c.className}</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-3">
+                        <PaidBar className="max-w-[140px]" paid={c.paid} payable={c.payable} />
+                        <span className="w-10 text-right text-xs tabular-nums text-gray-500">{c.rate}%</span>
+                      </div>
+                      <span className="text-xs tabular-nums text-gray-500">{inr(c.paid)} of {inr(c.payable)}</span>
+                    </td>
+                    <td className="px-5 py-3 text-right tabular-nums text-gray-900">{inr(c.remaining)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
 
-      <Card className="shadow-xl rounded-xl">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Recent Payments</CardTitle>
+        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <header className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+            <h2 className="font-semibold text-gray-900">Recent receipts</h2>
             <Link href="/admin/fees/payments" className="text-sm font-medium text-blue-600 hover:underline">View all</Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <RecentPaymentsTable payments={recentPayments} />
-        </CardContent>
-      </Card>
+          </header>
+          {o.recent.length === 0 ? (
+            <EmptyState title="No payments yet" />
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {o.recent.map((r) => (
+                <li key={r.id}>
+                  <Link href={`/admin/fees/payments/${r.id}/receipt`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50/60">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-gray-900">{r.student.name}</span>
+                      <span className="block text-xs text-gray-500">
+                        {r.receiptNo} · {fmtDate(r.paymentDate)} · {modeLabel(r.paymentMode)}
+                      </span>
+                    </span>
+                    <span className="font-semibold tabular-nums text-gray-900">{inr(r.amount)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

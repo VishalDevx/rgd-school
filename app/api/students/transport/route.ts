@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncStudentSafely } from "@/lib/fees/service";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -78,5 +79,6 @@ export async function PATCH(req: NextRequest) {
     });
   }
 
+  await syncStudentSafely(body.studentId);
   return NextResponse.json(updated);
 }

@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 
 async function main() {
   for (const email of ["admin@school.com", "teacher@school.com", "student@school.com"]) {
-    const user = await db.user.findUnique({ where: { email } });
+    const user = await db.user.findUnique({ where: { email }, select: { email: true, role: true, passwordHash: true } });
     if (!user) {
       console.log(`❌ ${email}: not found`);
       continue;

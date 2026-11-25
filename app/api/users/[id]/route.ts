@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { DeleteBlockedError, deleteUserCascade } from "@/lib/db/cascade";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -42,6 +43,13 @@ export async function DELETE(
     return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });
   }
 
-  await db.user.delete({ where: { id } });
+  try {
+    await deleteUserCascade(id);
+  } catch (err) {
+    if (err instanceof DeleteBlockedError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
   return new NextResponse(null, { status: 204 });
 }

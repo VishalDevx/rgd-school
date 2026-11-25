@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 import { getServerSession } from "next-auth/next";
 import { logger } from "@/app/lib/logger";
 import { authOption } from "@/app/lib/auth";
 
 const log = logger("staff-route");
+const DEFAULT_STAFF_PASSWORD = "Staff@123";
 
 // -------------------------------------------------------
 // GET /staff
 // -------------------------------------------------------
 export async function GET(req: NextRequest) {
+  const auth = await requireRole("ADMIN");
+  if (!auth.ok) return auth.response;
   log.info("GET /staff called");
 
   try {
@@ -77,7 +82,14 @@ export async function POST(req: NextRequest) {
           email: String(body.email).toLowerCase(),
           role: "STAFF",
           adharNo: String(body.adharNo ?? `STAFF-${Date.now()}`),
-          passwordHash: String(body.passwordHash),
+          // Forms never sent a password, so this used to store the literal
+          // string "undefined" and the account could not log in.
+          passwordHash: await bcrypt.hash(
+            typeof body.password === "string" && body.password.length >= 6
+              ? body.password
+              : DEFAULT_STAFF_PASSWORD,
+            10
+          ),
         },
       });
       userId = user.id;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
 import type { AttendanceStatus } from "@/lib/enums";
 
@@ -15,6 +16,8 @@ interface AttendanceBody {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireRole("ADMIN", "STAFF");
+  if (!auth.ok) return auth.response;
   const body: AttendanceBody = await req.json().catch(() => null);
   if (
     !body ||
@@ -27,6 +30,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Invalid payload" }, { status: 400 });
   }
 
+  // Staff may only mark attendance as themselves; admins may act for any staff.
+  let markedById = body.staffId;
+  if (auth.session.user.role === "STAFF") {
+    const self = await db.staff.findUnique({ where: { userId: auth.session.user.id } });
+    if (!self) return NextResponse.json({ message: "Staff profile not found" }, { status: 403 });
+    markedById = self.id;
+  }
+
   try {
     await db.attendance.createMany({
       data: body.records.map((r) => ({
@@ -34,7 +45,7 @@ export async function POST(req: NextRequest) {
         studentId: r.studentId,
         date: new Date(body.date),
         status: r.status,
-        markedById: body.staffId,
+        markedById,
       })),
       skipDuplicates: true,
     });

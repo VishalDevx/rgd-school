@@ -21,11 +21,11 @@ export async function GET(req: NextRequest) {
     if (fromDate) dateFilter.gte = new Date(fromDate);
     if (toDate) dateFilter.lte = new Date(toDate);
 
-    const incomeFilter = Object.keys(dateFilter).length > 0 ? { date: dateFilter } : {};
-
-    const [income, expenses] = await Promise.all([
-      db.feePayment.findMany({
+        const [income, expenses] = await Promise.all([
+      // Receipts, not fee accounts: an account's amountPaid is cumulative.
+      db.feeTransaction.findMany({
         where: {
+          voided: false,
           paymentDate: dateFilter.gte || dateFilter.lte ? dateFilter : undefined,
         },
         orderBy: { paymentDate: "asc" },
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     }
 
     for (const p of income) {
-      addToMap(p.paymentDate ?? p.createdAt, Number(p.amountPaid), "income");
+      addToMap(new Date(p.paymentDate), Number(p.amount), "income");
     }
     for (const e of expenses) {
       addToMap(e.date, Number(e.amount), "expense");

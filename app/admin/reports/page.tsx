@@ -473,56 +473,54 @@ function FeeReportContent() {
         const json = await res.json();
         setData(Array.isArray(json) ? json : []);
       } else if (activeReport === "pending" || activeReport === "defaulters") {
+        // Balances come from the fee service, which already accounts for
+        // transport, concessions and late fines per student.
         const params = new URLSearchParams();
-        if (fromDate) params.set("fromDate", fromDate);
-        if (toDate) params.set("toDate", toDate);
         if (classId && classId !== "all") params.set("classId", classId);
-        const res = await fetch(`/api/fees/payments?${params}`);
-        if (!res.ok) throw new Error("Failed");
-        const json = await res.json();
-        const payments = Array.isArray(json) ? json : [];
-        const studentMap = new Map<string, {
-          name: string; admissionNo: string; className: string;
-          totalPaid: number; totalDue: number; balance: number;
-        }>();
-        for (const p of payments) {
-          const key = p.student?.id ?? p.studentId;
-          if (!studentMap.has(key)) {
-            studentMap.set(key, {
-              name: p.student?.user?.name ?? "Unknown",
-              admissionNo: p.student?.admissionNo ?? "—",
-              className: p.student?.class?.name ?? "—",
-              totalPaid: 0, totalDue: 0, balance: 0,
-            });
-          }
-          const entry = studentMap.get(key)!;
-          const paid = Number(p.amountPaid);
-          const total = Number(p.feeStructure?.total ?? 0);
-          entry.totalPaid += paid;
-          entry.totalDue += total;
-          entry.balance += total - paid;
-        }
-        const rows = Array.from(studentMap.values());
-        const filtered = activeReport === "defaulters" ? rows.filter((r) => r.balance > 0) : rows.filter((r) => r.balance > 0);
-        setData(filtered);
+        if (activeReport === "defaulters") params.set("overdue", "true");
+        const res = await fetch(`/api/fees/dues?${params}`);
+        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Failed");
+        const json = (await res.json()) as {
+          items: Array<{ name: string; admissionNo: string; className: string; payable: number; paid: number; remaining: number; overdue: number }>;
+        };
+        setData(
+          json.items.map((r) => ({
+            name: r.name,
+            admissionNo: r.admissionNo,
+            className: r.className || "—",
+            totalDue: r.payable,
+            totalPaid: r.paid,
+            balance: r.remaining,
+            overdue: r.overdue,
+          }))
+        );
       } else if (activeReport === "ledger") {
-        const params = new URLSearchParams();
-        if (studentSearch) params.set("studentId", studentSearch);
+        const params = new URLSearchParams({ pageSize: "100" });
+        if (studentSearch) params.set("q", studentSearch);
         if (classId && classId !== "all") params.set("classId", classId);
+        if (fromDate) params.set("from", fromDate);
+        if (toDate) params.set("to", toDate);
         const res = await fetch(`/api/fees/payments?${params}`);
         if (!res.ok) throw new Error("Failed");
-        const json = await res.json();
-        const payments = Array.isArray(json) ? json : [];
-        setData(payments.map((p: Record<string, unknown>) => ({
-          id: p.id,
-          studentName: (p.student as Record<string, unknown>)?.user ? ((p.student as Record<string, unknown>).user as Record<string, unknown>).name : "Unknown",
-          admissionNo: (p.student as Record<string, unknown>)?.admissionNo ?? "—",
-          className: (p.student as Record<string, unknown>)?.class ? ((p.student as Record<string, unknown>).class as Record<string, unknown>).name : "—",
-          amountPaid: p.amountPaid,
-          status: p.status,
-          paymentDate: p.paymentDate,
-          feeName: (p.feeStructure as Record<string, unknown>)?.name ?? "—",
-        })));
+        const json = (await res.json()) as {
+          items: Array<{
+            id: string; receiptNo: string; amount: number; paymentMode: string; paymentDate: string;
+            student: { name: string; admissionNo: string }; className: string; structureName: string;
+          }>;
+        };
+        setData(
+          json.items.map((p) => ({
+            id: p.id,
+            receiptNo: p.receiptNo,
+            studentName: p.student.name,
+            admissionNo: p.student.admissionNo || "—",
+            className: p.className || "—",
+            feeName: p.structureName,
+            amountPaid: p.amount,
+            status: p.paymentMode,
+            paymentDate: p.paymentDate,
+          }))
+        );
       }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Failed to fetch");
@@ -547,7 +545,7 @@ function FeeReportContent() {
           columns={[
             { key: "period", label: "Period" },
             { key: "totalCollected", label: "Total Collected", render: (v) => fmtCurrency(n(v)) },
-            { key: "totalPending", label: "Total Pending", render: (v) => fmtCurrency(n(v)) },
+            { key: "totalDiscount", label: "Concessions", render: (v) => fmtCurrency(n(v)) },
             { key: "paymentCount", label: "Payments" },
           ]}
           data={data}
@@ -564,6 +562,7 @@ function FeeReportContent() {
             { key: "totalDue", label: "Total Due", render: (v) => fmtCurrency(n(v)) },
             { key: "totalPaid", label: "Total Paid", render: (v) => fmtCurrency(n(v)) },
             { key: "balance", label: "Balance", render: (v) => fmtCurrency(n(v)) },
+            { key: "overdue", label: "Overdue", render: (v) => fmtCurrency(n(v)) },
           ]}
           data={data}
         />
@@ -572,12 +571,13 @@ function FeeReportContent() {
     return (
       <ReportTable
         columns={[
+          { key: "receiptNo", label: "Receipt" },
           { key: "studentName", label: "Student" },
           { key: "admissionNo", label: "Adm No" },
           { key: "className", label: "Class" },
           { key: "feeName", label: "Fee" },
           { key: "amountPaid", label: "Amount", render: (v) => fmtCurrency(n(v)) },
-          { key: "status", label: "Status" },
+          { key: "status", label: "Mode" },
           { key: "paymentDate", label: "Date", render: (v) => fmt(v as string) },
         ]}
         data={data}

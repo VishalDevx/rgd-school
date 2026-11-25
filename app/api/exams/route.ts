@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -16,6 +17,8 @@ interface CreateExamBody {
 
 // ---------- GET ----------
 export async function GET(req: NextRequest) {
+  const auth = await requireRole();
+  if (!auth.ok) return auth.response;
   const { searchParams } = new URL(req.url);
   const classId = searchParams.get("classId");
 

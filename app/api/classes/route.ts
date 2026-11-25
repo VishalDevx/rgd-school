@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { ClassPayloadSchema, ClassPayload } from "@/app/lib/schemas/class.schema";
 import { authOption } from "@/app/lib/auth";
 
 export async function GET() {
+  const auth = await requireRole("ADMIN", "STAFF");
+  if (!auth.ok) return auth.response;
   try {
     const classes = await db.class.findMany({
       include: {

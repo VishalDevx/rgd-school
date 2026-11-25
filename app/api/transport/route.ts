@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncStudentSafely } from "@/lib/fees/service";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
         where: { id: body.studentId },
         data: { usesTransport: body.isActive },
       });
+      await syncStudentSafely(body.studentId);
     }
 
     return NextResponse.json(updated);
@@ -101,6 +103,7 @@ export async function POST(req: NextRequest) {
     where: { id: body.studentId },
     data: { usesTransport: true },
   });
+  await syncStudentSafely(body.studentId);
 
   return NextResponse.json(created, { status: 201 });
 }

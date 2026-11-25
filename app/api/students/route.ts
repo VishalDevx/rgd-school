@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { syncStudentSafely } from "@/lib/fees/service";
 import { db } from "@/lib/db";
+import bcrypt from "bcryptjs";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
 import { getSupabaseClient } from "@/app/lib/supabaseClient";
@@ -7,6 +9,7 @@ import { createAuditLog } from "@/app/lib/audit";
 import { logger } from "@/app/lib/logger";
 
 const log = logger("students-route");
+const DEFAULT_STUDENT_PASSWORD = "Student@123";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +34,13 @@ export async function POST(req: NextRequest) {
     const gender = form.get("gender") as string | null;
     const address = form.get("address") as string | null;
     const classId = form.get("classId") as string | null;
-    const passwordHash = form.get("passwordHash") as string | null;
+    // Forms never sent a password, so students were created with no hash and
+    // could not log in until an admin reset it. Hash what is sent, or default.
+    const rawPassword = (form.get("password") as string | null) ?? "";
+    const passwordHash = await bcrypt.hash(
+      rawPassword.length >= 6 ? rawPassword : DEFAULT_STUDENT_PASSWORD,
+      10
+    );
 
     const fatherName = form.get("fatherName") as string | null;
     const motherName = form.get("motherName") as string | null;
@@ -155,6 +164,9 @@ export async function POST(req: NextRequest) {
       }
       throw err;
     }
+
+    // Bill the new student for their class's existing fee structures.
+    await syncStudentSafely(created.student.id);
 
     await createAuditLog({
       userId: session.user.id,

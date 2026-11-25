@@ -1,242 +1,222 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
-import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, Download, Printer } from "lucide-react";
+import type { ReceiptData } from "@/lib/fees/service";
+import { amountInWords } from "@/lib/fees/calc";
+import { Button } from "@/app/components/ui/button";
+import { fmtDate, inr, modeLabel } from "@/app/components/fees/ui";
 
-type ReceiptPayload = {
-  school: null | {
-    name: string;
-    address: string | null;
-    contactEmail: string | null;
-    contactPhone: string | null;
-    logoUrl: string | null;
-  };
-  payment: {
-    id: string;
-    amountPaid: string | number;
-    remainAmount: string | number;
-    status: "PENDING" | "PARTIAL" | "PAID";
-    paymentDate: string | null;
-    createdAt: string;
-    razorpayOrder: string | null;
-    razorpayPaymentId: string | null;
-    receiptUrl: string | null;
-    feeStructure: {
-      id: string;
-      name: string | null;
-      total: string | number;
-    };
-    student: {
-      id: string;
-      admissionNo: string;
-      rollNumber: string;
-      user: { name: string; email: string; phone: string | null };
-      class: { name: string; grade: string; section: string | null } | null;
-    };
-  };
-};
-
-function n(v: string | number) {
-  const num = typeof v === "string" ? Number(v) : v;
-  return Number.isFinite(num) ? num : 0;
-}
-
-function fmtDate(v?: string | null) {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString();
-}
-
-export function FeeReceiptClient({ paymentId }: { paymentId: string }) {
-  const [data, setData] = useState<ReceiptPayload | null>(null);
-  const [loading, setLoading] = useState(true);
+/**
+ * Printable fee receipt for ONE payment. The balance shown is the balance
+ * right after this payment, so a reprint always matches the original.
+ */
+export function FeeReceiptClient({
+  paymentId,
+  backHref,
+  actions,
+}: {
+  paymentId: string;
+  backHref?: string;
+  actions?: (data: ReceiptData, reload: () => void) => React.ReactNode;
+}) {
+  const [data, setData] = useState<ReceiptData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+  const [downloading, setDownloading] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!paymentId) return;
+    let cancelled = false;
     fetch(`/api/fees/payments/${paymentId}`)
       .then(async (res) => {
-        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? "Failed");
-        return res.json();
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.error ?? "Could not load the receipt");
+        return body as ReceiptData;
       })
-      .then(setData)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Failed"))
-      .finally(() => setLoading(false));
-  }, [paymentId]);
-
-  const computed = useMemo(() => {
-    if (!data) return null;
-    const total = n(data.payment.feeStructure.total);
-    const paid = n(data.payment.amountPaid);
-    const remain = n(data.payment.remainAmount);
-    const status = data.payment.status;
-    return { total, paid, remain, status };
-  }, [data]);
+      .then((d) => !cancelled && setData(d))
+      .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : "Could not load the receipt"));
+    return () => {
+      cancelled = true;
+    };
+  }, [paymentId, version]);
 
   const handleDownload = async () => {
     if (!receiptRef.current || !data) return;
-
-    const canvas = await html2canvas(receiptRef.current, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-    });
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-
-    const safeName = data.payment.student.user.name.replaceAll(" ", "_");
-    pdf.save(`${safeName}_Fee_Receipt_${data.payment.id}.pdf`);
+    setDownloading(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const canvas = await html2canvas(receiptRef.current, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+      const pdf = new jsPDF("p", "mm", "a4");
+      const width = pdf.internal.pageSize.getWidth();
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, width, (canvas.height * width) / canvas.width);
+      pdf.save(`${data.receipt.receiptNo}_${data.student.name.replace(/\s+/g, "_")}.pdf`);
+    } finally {
+      setDownloading(false);
+    }
   };
 
-  if (loading) return <div className="py-12 text-center text-gray-500">Loading…</div>;
-  if (error) return <div className="py-12 text-center text-red-600">{error}</div>;
-  if (!data || !computed) return null;
+  if (error) {
+    return (
+      <div className="mx-auto max-w-md rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">{error}</div>
+    );
+  }
+  if (!data) {
+    return <div className="mx-auto h-[640px] max-w-3xl animate-pulse rounded-xl bg-white" />;
+  }
 
-  const schoolName = data.school?.name ?? "School";
-  const receiptNo = data.payment.id;
-  const studentClass = data.payment.student.class?.name ?? "—";
+  const { school, student, structure, receipt, balanceAfter } = data;
+  const received = receipt.amount;
+  const schoolName = school?.name ?? "School";
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 bg-gray-100">
-      <div className="flex items-center justify-end gap-3 mb-4">
-        <button
-          onClick={() => window.print()}
-          className="rounded-md border bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
-        >
-          Print
-        </button>
-        <button
-          onClick={handleDownload}
-          className="rounded-md bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
-        >
-          Download PDF
-        </button>
+    <div className="mx-auto max-w-3xl space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
+        {backHref ? (
+          <Button asChild variant="ghost" size="sm">
+            <Link href={backHref}>
+              <ArrowLeft className="mr-1 h-4 w-4" /> Back
+            </Link>
+          </Button>
+        ) : (
+          <span />
+        )}
+        <div className="flex flex-wrap gap-2">
+          {actions?.(data, () => setVersion((v) => v + 1))}
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="mr-1.5 h-4 w-4" /> Print
+          </Button>
+          <Button size="sm" onClick={handleDownload} disabled={downloading}>
+            <Download className="mr-1.5 h-4 w-4" /> {downloading ? "Preparing…" : "Download PDF"}
+          </Button>
+        </div>
       </div>
 
-      <div ref={receiptRef} className="bg-white p-8 md:p-10 text-gray-900">
-        {/* Header */}
-        <div className="flex items-start gap-4 border-b pb-6 mb-6">
-          {data.school?.logoUrl ? (
-            <div className="relative h-14 w-14">
-              <Image
-                src={data.school.logoUrl}
-                alt={`${schoolName} logo`}
-                fill
-                className="object-contain"
-                sizes="56px"
-                priority
-              />
-            </div>
-          ) : null}
+      <div ref={receiptRef} className="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-8 text-gray-900 shadow-sm print:border-0 print:shadow-none md:p-10">
+        {receipt.voided ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
+            <span className="rotate-[-24deg] rounded-xl border-8 border-red-500/30 px-10 py-2 text-8xl font-black tracking-widest text-red-500/25">
+              VOID
+            </span>
+          </div>
+        ) : null}
 
+        {/* Letterhead */}
+        <div className="flex items-start gap-4 border-b-2 border-gray-900 pb-5">
+          {school?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- html2canvas needs a plain <img>
+            <img src={school.logoUrl} alt="" crossOrigin="anonymous" className="h-16 w-16 object-contain" />
+          ) : null}
           <div className="flex-1">
-            <h1 className="text-2xl font-extrabold tracking-wide">{schoolName}</h1>
-            {data.school?.address ? (
-              <p className="text-sm text-gray-700 mt-1">{data.school.address}</p>
-            ) : null}
-            <p className="text-xs text-gray-600 mt-2">
-              Fee Receipt • Receipt No: <span className="font-semibold">{receiptNo}</span>
+            <h1 className="text-2xl font-bold tracking-tight">{schoolName}</h1>
+            {school?.address ? <p className="mt-0.5 text-sm text-gray-600">{school.address}</p> : null}
+            <p className="mt-0.5 text-xs text-gray-500">
+              {[school?.contactPhone, school?.contactEmail].filter(Boolean).join(" · ")}
             </p>
           </div>
-
-          <div className="text-right text-xs text-gray-600">
-            <div>Date: {fmtDate(data.payment.paymentDate ?? data.payment.createdAt)}</div>
-            <div>Status: {data.payment.status}</div>
+          <div className="text-right">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Fee Receipt</p>
+            <p className="mt-1 font-mono text-lg font-semibold">{receipt.receiptNo}</p>
+            <p className="text-sm text-gray-600">{fmtDate(receipt.paymentDate)}</p>
           </div>
         </div>
 
-        {/* Student + payment info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
-          <Info label="Student Name" value={data.payment.student.user.name} />
-          <Info label="Admission No" value={data.payment.student.admissionNo} />
-          <Info label="Roll Number" value={data.payment.student.rollNumber} />
-          <Info label="Class" value={studentClass} />
-          <Info label="Email" value={data.payment.student.user.email} />
-          <Info label="Phone" value={data.payment.student.user.phone ?? "—"} />
+        {/* Student */}
+        <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 text-sm md:grid-cols-3">
+          <Field label="Student" value={student.name} />
+          <Field label="Admission no." value={student.admissionNo} />
+          <Field label="Class / Roll" value={`${student.className || "—"} / ${student.rollNumber}`} />
+          <Field label="Father's name" value={student.fatherName ?? "—"} />
+          <Field label="Fee" value={structure.name} />
+          <Field label="Payment mode" value={`${modeLabel(receipt.paymentMode)}${receipt.referenceNo ? ` · Ref ${receipt.referenceNo}` : ""}`} />
+        </dl>
+
+        {/* Amounts */}
+        <table className="mt-6 w-full text-sm">
+          <thead>
+            <tr className="border-y border-gray-200 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+              <th className="px-3 py-2 font-medium">Particulars</th>
+              <th className="px-3 py-2 text-right font-medium">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 tabular-nums">
+            <tr>
+              <td className="px-3 py-2.5">Amount received towards {structure.name}</td>
+              <td className="px-3 py-2.5 text-right">{inr(received)}</td>
+            </tr>
+            {receipt.lateFine > 0 ? (
+              <tr>
+                <td className="px-3 py-2.5 text-gray-600">Late fine charged (included above)</td>
+                <td className="px-3 py-2.5 text-right text-gray-600">{inr(receipt.lateFine)}</td>
+              </tr>
+            ) : null}
+            {receipt.discount > 0 ? (
+              <tr>
+                <td className="px-3 py-2.5 text-gray-600">Concession granted</td>
+                <td className="px-3 py-2.5 text-right text-gray-600">{inr(receipt.discount)}</td>
+              </tr>
+            ) : null}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-900 text-base font-semibold">
+              <td className="px-3 py-3">Total received</td>
+              <td className="px-3 py-3 text-right tabular-nums">{inr(received)}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <p className="mt-2 text-sm italic text-gray-600">In words: {amountInWords(received)}</p>
+
+        {/* Account position after this payment */}
+        <div className="mt-6 grid grid-cols-3 divide-x divide-gray-200 rounded-lg border border-gray-200 text-center text-sm">
+          <Summary label="Net payable" value={inr(balanceAfter.netPayable)} />
+          <Summary label="Paid to date" value={inr(balanceAfter.amountPaid)} />
+          <Summary label="Balance due" value={inr(balanceAfter.remainAmount)} strong />
         </div>
 
-        <div className="border rounded-md overflow-hidden">
-          <div className="grid grid-cols-4 bg-gray-100 text-xs font-semibold uppercase tracking-wider">
-            <Cell head>Fee Structure</Cell>
-            <Cell head className="text-right">
-              Total
-            </Cell>
-            <Cell head className="text-right">
-              Paid
-            </Cell>
-            <Cell head className="text-right">
-              Remaining
-            </Cell>
+        {receipt.remarks ? <p className="mt-4 text-sm text-gray-600">Remarks: {receipt.remarks}</p> : null}
+        {receipt.voided ? (
+          <p className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            Voided on {fmtDate(receipt.voidedAt)}
+            {receipt.voidedBy ? ` by ${receipt.voidedBy}` : ""}: {receipt.voidReason}
+          </p>
+        ) : null}
+
+        <div className="mt-12 grid grid-cols-2 gap-10 text-sm">
+          <div>
+            <div className="mb-1 h-10 border-b border-gray-400" />
+            <p className="text-xs uppercase tracking-wide text-gray-500">
+              Received by{receipt.collectedBy ? ` · ${receipt.collectedBy}` : ""}
+            </p>
           </div>
-          <div className="grid grid-cols-4 text-sm">
-            <Cell>{data.payment.feeStructure.name ?? "—"}</Cell>
-            <Cell className="text-right">₹{computed.total.toLocaleString()}</Cell>
-            <Cell className="text-right">₹{computed.paid.toLocaleString()}</Cell>
-            <Cell className="text-right">₹{computed.remain.toLocaleString()}</Cell>
+          <div>
+            <div className="mb-1 h-10 border-b border-gray-400" />
+            <p className="text-xs uppercase tracking-wide text-gray-500">Authorised signatory</p>
           </div>
         </div>
-
-        <div className="mt-6 text-xs text-gray-600">
-          {data.payment.razorpayPaymentId ? (
-            <div>Online Payment Id: {data.payment.razorpayPaymentId}</div>
-          ) : null}
-          {data.payment.receiptUrl ? <div>Receipt URL: {data.payment.receiptUrl}</div> : null}
-        </div>
-
-        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-10 text-sm">
-          <Signature label="Collected By" />
-          <Signature label="Authorized Signatory" />
-        </div>
+        <p className="mt-8 text-center text-[11px] text-gray-400">
+          This is a computer-generated receipt. Please keep it for your records.
+        </p>
       </div>
     </div>
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="border px-4 py-3">
-      <p className="text-xs uppercase tracking-widest text-gray-600">{label}</p>
-      <p className="mt-1 font-semibold">{value}</p>
-    </div>
-  );
-}
-
-function Cell({
-  children,
-  head,
-  className,
-}: {
-  children: React.ReactNode;
-  head?: boolean;
-  className?: string;
-}) {
-  return (
-    <div
-      className={[
-        "px-4 py-3 border-r last:border-r-0",
-        head ? "border-b" : "",
-        className ?? "",
-      ].join(" ")}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Signature({ label }: { label: string }) {
+function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="h-12 border-b mb-2" />
-      <div className="text-xs uppercase tracking-widest text-gray-600">{label}</div>
+      <dt className="text-xs uppercase tracking-wide text-gray-500">{label}</dt>
+      <dd className="mt-0.5 font-medium">{value}</dd>
     </div>
   );
 }
 
+function Summary({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="px-3 py-3">
+      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className={`mt-0.5 tabular-nums ${strong ? "text-lg font-semibold" : "font-medium"}`}>{value}</p>
+    </div>
+  );
+}

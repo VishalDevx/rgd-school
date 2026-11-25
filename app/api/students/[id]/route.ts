@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { DeleteBlockedError, deleteUserCascade } from "@/lib/db/cascade";
+import { syncStudentSafely } from "@/lib/fees/service";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -68,6 +70,7 @@ export async function PUT(
     const usesTransport = form.get("usesTransport") === "yes";
 
     // ---------------- UPDATE STUDENT ----------------
+    const before = await db.student.findUnique({ where: { id: studentId }, select: { classId: true } });
     const updatedStudent = await db.student.update({
       where: { id: studentId },
       data: {
@@ -136,6 +139,9 @@ export async function PUT(
         },
       });
     }
+
+    // Class or transport may have changed: re-bill this student's fees.
+    await syncStudentSafely(studentId, { previousClassId: before?.classId ?? null });
 
     await createAuditLog({
       userId: session.user.id,
@@ -280,22 +286,19 @@ export async function DELETE(
       );
     }
 
-    await db.user.delete({
-      where: { id: student.userId },
-    });
+    // Removes the user AND the student's attendance, results, fees, etc.
+    // (previously only the user went, leaving an orphaned student record).
+    await deleteUserCascade(student.userId);
 
     return new Response(
       JSON.stringify({ message: "Student permanently deleted" }),
       { status: 200 }
     );
   } catch (err: unknown) {
-    // Prisma throws if record does not exist
-    if (err && typeof err === "object" && "code" in err && err.code === "P2025") {
-      return new Response(
-        JSON.stringify({ error: "Student not found" }),
-        { status: 404 }
-      );
+    if (err instanceof DeleteBlockedError) {
+      return new Response(JSON.stringify({ error: err.message }), { status: err.status });
     }
+    console.error("DELETE /api/students/[id] failed:", err);
 
     return new Response(
       JSON.stringify({ error: "Internal server error" }),

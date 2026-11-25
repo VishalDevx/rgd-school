@@ -1,4 +1,5 @@
-﻿const mongoose = require("mongoose");
+/* eslint-disable @typescript-eslint/no-require-imports -- plain Node script: `node test-mongo.js` */
+const mongoose = require("mongoose");
 require("dotenv").config();
 
 async function test() {

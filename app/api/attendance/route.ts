@@ -1,5 +1,6 @@
 // app/api/attendance/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
 import { authOption } from "@/app/lib/auth";
 import { getServerSession } from "next-auth/next";
@@ -24,6 +25,8 @@ interface RawAttendanceRecord {
 // ------------------ GET ATTENDANCE ------------------
 
 export async function GET(_request: NextRequest) {
+  const auth = await requireRole("ADMIN", "STAFF");
+  if (!auth.ok) return auth.response;
   const url = new URL(_request.url);
   const classId = url.searchParams.get("classId");
   const dateStr = url.searchParams.get("date");
