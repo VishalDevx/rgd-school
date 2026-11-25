@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -7,6 +8,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireRole();
+  if (!auth.ok) return auth.response;
   try {
     const { id } = await params;
     const session = await db.academicSession.findUnique({ where: { id } });

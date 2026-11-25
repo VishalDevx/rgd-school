@@ -62,10 +62,45 @@
   MongoDB would otherwise treat the missing optional field as `null` and collide.
 - **Money is stored as a double** and rounded via `lib/money.ts` helpers.
 
+## Fees module
+All fee logic lives in `lib/fees/`:
+
+| File | Role |
+|---|---|
+| `calc.ts` | Pure money rules (totals, balances, payment checks, receipt numbers, amount in words). Unit-tested. |
+| `validation.ts` | zod schemas for structure and payment input. |
+| `service.ts` | The only code that writes balances: billing, collecting, voiding, statements, dues, overview. |
+
+Data model:
+- **FeeStructure**: what a class is charged. Total = tuition (monthly × months) + exam + misc + transport.
+- **FeePayment**: one *account* per student per structure, holding the running balance. Always
+  recomputed from its receipts; never edit `amountPaid`/`remainAmount` by hand.
+- **FeeTransaction**: one *receipt* per payment, with a unique number from an atomic counter.
+  Receipts are never edited or deleted. Mistakes are **voided** (kept on record, marked VOID).
+
+Students are billed automatically when a structure is created or edited, and when a student is
+created, changes class, starts or stops transport, or is promoted.
+
+Admin screens: Fees overview, Collect fee, Fee receipts, Fee dues (with reminders), Fee structures.
+
+### Upgrading existing data (run once)
+Older data stored only a running total per account. Run:
+```bash
+npm run fees:migrate
+```
+or press **Recalculate** on the Fees overview page. It merges duplicate accounts, turns each old
+balance into a "legacy" receipt (keeping its old receipt number), fixes structure totals and
+recomputes every balance. It is safe to run again. Without it, old balances are still migrated
+lazily the first time each account is touched.
+
 ## Tests
 ```bash
-npm test          # query translator + schema/relation metadata checks
+npm test          # query translator, schema metadata and fee arithmetic checks
 npm run typecheck # tsc --noEmit
+
+# Fee service end-to-end against a throwaway local MongoDB (wipes that database):
+docker run -d --rm --name rgd-mongo -p 27099:27017 mongo:7
+MONGODB_URI=mongodb://localhost:27099/rgd_fee_test npm run test:fees:live
 ```
 
 ## Roles

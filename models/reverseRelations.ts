@@ -76,6 +76,7 @@ export const REVERSE_RELATIONS: Record<string, ReverseRelation[]> = {
   Student: [
     { name: "attendance", model: "Attendance", foreignField: "studentId" },
     { name: "fees", model: "FeePayment", foreignField: "studentId" },
+    { name: "feeTransactions", model: "FeeTransaction", foreignField: "studentId" },
     { name: "results", model: "Result", foreignField: "studentId" },
     { name: "transport", model: "TransportAssignment", foreignField: "studentId", one: true },
     { name: "leaves", model: "Leave", foreignField: "studentId" },
@@ -91,6 +92,11 @@ export const REVERSE_RELATIONS: Record<string, ReverseRelation[]> = {
 
   FeeStructure: [
     { name: "payments", model: "FeePayment", foreignField: "feeStructureId" },
+    { name: "transactions", model: "FeeTransaction", foreignField: "feeStructureId" },
+  ],
+
+  FeePayment: [
+    { name: "transactions", model: "FeeTransaction", foreignField: "feePaymentId" },
   ],
 
   ExpenseCategory: [

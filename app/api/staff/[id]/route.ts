@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { deleteUserCascade } from "@/lib/db/cascade";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOption } from "@/app/lib/auth";
@@ -24,6 +26,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireRole("ADMIN");
+  if (!auth.ok) return auth.response;
   const { id } = await params;
 
   const item = await db.staff.findUnique({
@@ -93,7 +97,15 @@ export async function DELETE(
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  await db.staff.delete({ where: { id } });
+  const staff = await db.staff.findUnique({ where: { id }, select: { userId: true } });
+  if (!staff) return new NextResponse("Not found", { status: 404 });
+  if (staff.userId === session.user.id) {
+    return new NextResponse("You cannot delete your own account", { status: 400 });
+  }
+
+  // Delete the login too: a STAFF user without a staff profile could still sign
+  // in but every staff page would fail. Cascades documents, attendance, leaves.
+  await deleteUserCascade(staff.userId);
 
   return new NextResponse(null, { status: 204 });
 }

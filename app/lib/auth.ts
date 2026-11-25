@@ -37,7 +37,17 @@ export const authOption: AuthOptions = {
           throw new Error(`Too many login attempts. Try again in ${blocked.retryAfterSeconds}s.`);
         }
 
-        const user = await db.user.findUnique({ where: { email: identifier } });
+        const user = await db.user.findUnique({
+          where: { email: identifier },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isActive: true,
+            passwordHash: true,
+          },
+        });
 
         if (!user) {
           await recordLoginFailure({ req, identifier });
@@ -94,6 +104,14 @@ export const authOption: AuthOptions = {
 
         const user = await db.user.findUnique({
           where: { adharNo: identifier },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            isActive: true,
+            passwordHash: true,
+          },
         });
 
         if (!user) {

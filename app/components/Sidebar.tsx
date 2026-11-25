@@ -32,6 +32,9 @@ import {
   Timer,
   Award,
   CreditCard,
+  Receipt,
+  HandCoins,
+  AlertTriangle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/app/components/ui/button";
@@ -80,11 +83,19 @@ const icons: Record<string, React.ComponentType<{ size?: number }>> = {
   award: Award,
   "credit-card": CreditCard,
   "file-text": FileText,
+  receipt: Receipt,
+  collect: HandCoins,
+  alert: AlertTriangle,
 };
 
 export function Sidebar({ role, collapsed = false, onToggleCollapsed }: SidebarProps) {
   const pathname = usePathname();
   const items: NavItem[] = sidebarItemsByRole[role] ?? [];
+  // Highlight only the most specific match, so "/admin/fees/dues" lights up
+  // "Fee Dues" and not "Fees" as well.
+  const activeHref = items
+    .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; read: boolean; createdAt: string }[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -201,7 +212,7 @@ export function Sidebar({ role, collapsed = false, onToggleCollapsed }: SidebarP
       <nav className="flex-1 overflow-y-auto p-3">
         <ul className="space-y-2">
           {items.map((item) => {
-            const active = pathname.startsWith(item.href);
+            const active = item.href === activeHref;
             const Icon = icons[item.icon as keyof typeof icons];
 
             const linkContent = (

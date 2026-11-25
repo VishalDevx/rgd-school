@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
+import { requireRole } from "@/app/lib/apiAuth";
 import { db } from "@/lib/db";
-import type { FeePaymentRow as FeePayment, ExpenseRow as Expense } from "@/lib/types";
+import type { ExpenseRow as Expense } from "@/lib/types";
 
 function ym(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export async function GET() {
+  const auth = await requireRole("ADMIN");
+  if (!auth.ok) return auth.response;
   const now = new Date();
 
   // Last 6 months
@@ -17,9 +20,10 @@ export async function GET() {
   }
 
   // --- Fetch typed data ---
-  const payments = await db.feePayment.findMany({
-    include: { student: true },
-    orderBy: { createdAt: "asc" },
+  const since = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const payments = await db.feeTransaction.findMany({
+    where: { voided: false, paymentDate: { gte: since } },
+    select: { amount: true, paymentDate: true },
   });
 
   const expenses = await db.expense.findMany({
@@ -36,11 +40,10 @@ export async function GET() {
   );
 
   // --- Process payments ---
-  payments.forEach((p: FeePayment) => {
-    const d = p.createdAt ? new Date(p.createdAt) : now;
-    const key = ym(d);
+  payments.forEach((p: { amount: number; paymentDate: Date }) => {
+    const key = ym(new Date(p.paymentDate));
     if (key in feesByMonth) {
-      feesByMonth[key] += Number(p.amountPaid);
+      feesByMonth[key] += Number(p.amount);
     }
   });
 

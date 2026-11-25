@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { syncClasses } from "@/lib/fees/service";
 import type { Grade } from "@/lib/enums";
 import type { ClassRow as Class, JsonInput } from "@/lib/types";
 
@@ -100,6 +101,14 @@ export async function promoteAllActiveStudents() {
     if (result.count > 0) {
       moves.push({ fromClassId: cls.id, toClassId: targetClass.id, count: result.count });
     }
+  }
+
+  // Bill promoted students for any fee structures already set up on their new
+  // classes. Old-class balances stay on record as arrears.
+  try {
+    await syncClasses(moves.map((m) => m.toClassId));
+  } catch (err) {
+    console.error("[promotion] fee sync failed:", err);
   }
 
   await db.auditLog.create({

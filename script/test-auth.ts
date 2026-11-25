@@ -13,7 +13,7 @@ import mongoose from "mongoose";
   ];
   let bad = 0;
   for (const [email, pass, role] of cases) {
-    const user = await db.user.findUnique({ where: { email } });
+    const user = await db.user.findUnique({ where: { email }, select: { email: true, role: true, passwordHash: true } });
     if (!user) { console.log(`FAIL ${email}: not found`); bad++; continue; }
     const valid = await bcrypt.compare(pass, user.passwordHash!);
     const roleOk = user.role === role;
@@ -22,7 +22,7 @@ import mongoose from "mongoose";
   }
 
   // student login by aadhar, as auth.ts does
-  const byAadhar = await db.user.findUnique({ where: { adharNo: "123456789012" } });
+  const byAadhar = await db.user.findUnique({ where: { adharNo: "123456789012" }, select: { email: true, role: true, passwordHash: true } });
   const aadharOk = !!byAadhar && (await bcrypt.compare("Student@123", byAadhar.passwordHash!));
   console.log(`${aadharOk ? "ok  " : "FAIL"} aadhar login lookup -> ${byAadhar?.email}`);
   if (!aadharOk) bad++;
