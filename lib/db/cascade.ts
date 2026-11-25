@@ -54,7 +54,8 @@ const CHILDREN: Record<string, Edge[]> = {
   ],
 };
 
-async function cascade(modelName: string, ids: Types.ObjectId[]): Promise<void> {
+/** Delete `ids` of `modelName` and everything that depends on them. */
+export async function cascade(modelName: string, ids: Types.ObjectId[]): Promise<void> {
   if (ids.length === 0) return;
 
   for (const edge of CHILDREN[modelName] ?? []) {

@@ -338,6 +338,41 @@ export class Repository {
     return source._count;
   }
 
+  /**
+   * Drop rows whose REQUIRED included relation points at a document that no
+   * longer exists (e.g. a Student whose User was deleted).
+   *
+   * Prisma's foreign keys made such rows impossible, so every page assumes
+   * `student.user` is present; one orphan crashed the whole students page with
+   * "Cannot read properties of null (reading 'name')". Orphans are logged so
+   * they can be cleaned up with `npm run db:orphans`.
+   */
+  private dropOrphans(docs: unknown, args: AnyObj): AnyObj[] {
+    const rows = (docs ?? []) as AnyObj[];
+    const source = args.include ?? args.select;
+    if (!source || rows.length === 0) return rows;
+
+    const required = Object.keys(source).filter((k) => {
+      const info = this.relations[k];
+      return info?.required && source[k] && k !== "_count";
+    });
+    if (required.length === 0) return rows;
+
+    const kept = rows.filter((row) =>
+      required.every((k) => {
+        const fk = row[this.relations[k].localField];
+        return fk === undefined || fk === null || (row[k] !== null && row[k] !== undefined);
+      })
+    );
+    if (kept.length !== rows.length) {
+      console.warn(
+        `[db] ${this.name}: skipped ${rows.length - kept.length} orphaned record(s) whose ` +
+          `${required.join("/")} no longer exists. Run \`npm run db:orphans\` to review.`
+      );
+    }
+    return kept;
+  }
+
   // ------------------------------------------------------------- read ops
 
   async findMany(args: AnyObj = {}): Promise<any[]> {
@@ -360,7 +395,7 @@ export class Repository {
     const populate = this.buildPopulate(args);
     if (populate) q = Repository.applyPopulate(q, populate);
 
-    const docs = await q.lean().exec();
+    const docs = this.dropOrphans(await q.lean().exec(), args);
     // Attach counts while `_id` is still an ObjectId - the aggregation $match
     // compares against ObjectId, not the string `id` the normalized doc carries.
     if (countSpec) await this.attachCounts(docs as AnyObj[], countSpec);

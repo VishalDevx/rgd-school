@@ -106,7 +106,7 @@ export default function StudentsTable({ students }: { students: Student[] }) {
 
   const filtered = useMemo(() => {
     return students.filter((s) => {
-      const matchesSearch = [s.user.name, s.user.email, s.admissionNo, s.rollNumber, s.class?.name]
+      const matchesSearch = [s.user?.name, s.user?.email, s.admissionNo, s.rollNumber, s.class?.name]
         .some((val) => val?.toLowerCase().includes(query.toLowerCase()));
 
       const matchesClass =
@@ -126,7 +126,7 @@ export default function StudentsTable({ students }: { students: Student[] }) {
         <ClassStudentListPDF
           className={selectedClass === "all" ? "All Classes" : selectedClass}
           session={""}
-          students={filtered.map((s, i) => ({ sNo: i + 1, name: s.user.name, admissionNo: s.admissionNo, rollNumber: s.rollNumber }))}
+          students={filtered.map((s, i) => ({ sNo: i + 1, name: s.user?.name ?? "—", admissionNo: s.admissionNo, rollNumber: s.rollNumber }))}
           total={filtered.length}
         />
       </div></div>
@@ -195,7 +195,7 @@ export default function StudentsTable({ students }: { students: Student[] }) {
                     {s.profileImg ? (
                       <Image
                         src={s.profileImg}
-                        alt={s.user.name}
+                        alt={s.user?.name ?? ""}
                         width={40}
                         height={40}
                         className="w-10 h-10 rounded-full object-cover border border-gray-200"
@@ -206,8 +206,8 @@ export default function StudentsTable({ students }: { students: Student[] }) {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell>{s.user.name}</TableCell>
-                  <TableCell>{s.user.email}</TableCell>
+                  <TableCell>{s.user?.name ?? "—"}</TableCell>
+                  <TableCell>{s.user?.email ?? "—"}</TableCell>
                   <TableCell>{s.admissionNo}</TableCell>
                   <TableCell>{s.rollNumber}</TableCell>
                   <TableCell>
@@ -232,7 +232,7 @@ export default function StudentsTable({ students }: { students: Student[] }) {
                       <Button
                         variant="destructive"
                         size="sm"
-                        onClick={() => { setDeleteId(s.id); setDeleteName(s.user.name); }}
+                        onClick={() => { setDeleteId(s.id); setDeleteName(s.user?.name ?? s.admissionNo); }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -259,7 +259,7 @@ export default function StudentsTable({ students }: { students: Student[] }) {
                           <DialogHeader>
                             <DialogTitle>Reset Password</DialogTitle>
                             <DialogDescription>
-                              Are you sure you want to reset the password for {s.user.name}?
+                              Are you sure you want to reset the password for {s.user?.name ?? s.admissionNo}?
                               {resetPassword && (
                                 <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
                                   <p className="text-sm font-semibold text-green-800 mb-1">New Password:</p>
@@ -275,7 +275,7 @@ export default function StudentsTable({ students }: { students: Student[] }) {
                             ) : (
                               <>
                                 <Button variant="outline" onClick={() => setOpenDialogId(null)}>Cancel</Button>
-                                <Button onClick={() => handleResetPassword(s.id, s.user.name)} disabled={resettingId === s.id}>
+                                <Button onClick={() => handleResetPassword(s.id, s.user?.name ?? s.admissionNo)} disabled={resettingId === s.id}>
                                   {resettingId === s.id ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Resetting...</> : "Reset Password"}
                                 </Button>
                               </>

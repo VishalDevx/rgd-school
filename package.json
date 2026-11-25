@@ -16,7 +16,8 @@
     "test:fees": "ts-node -P tsconfig.scripts.json -r tsconfig-paths/register script/test-fees.ts",
     "fees:migrate": "ts-node -T -P tsconfig.scripts.json -r tsconfig-paths/register script/migrate-fees.ts",
     "test:fees:live": "ts-node -T -P tsconfig.scripts.json -r tsconfig-paths/register script/test-fees-live.ts",
-    "db:backup": "ts-node -T -P tsconfig.scripts.json -r tsconfig-paths/register script/backup-db.ts"
+    "db:backup": "ts-node -T -P tsconfig.scripts.json -r tsconfig-paths/register script/backup-db.ts",
+    "db:orphans": "ts-node -T -P tsconfig.scripts.json -r tsconfig-paths/register script/orphans.ts"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
